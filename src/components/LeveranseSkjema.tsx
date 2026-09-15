@@ -9,8 +9,10 @@ import {
   TextField,
 } from "@purpurds/purpur";
 
+import { tolkNavneliste } from "../lib/navn";
+
 export type SkjemaUtkast = {
-  /** Én eller flere adresser – alle får samme ansvarlige, antall og notat. */
+  /** Adressene leveransen består av – alle får samme ansvarlige og notat. */
   adresser: string[];
   ansvarlige: string[];
   antallKunder: number | null;
@@ -31,7 +33,7 @@ const TOMT_SKJEMA = {
   notat: "",
 };
 
-export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Props) {
+export function LeveranseSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Props) {
   const [felt, setFelt] = useState(TOMT_SKJEMA);
   const [ansvarlige, setAnsvarlige] = useState<string[]>([]);
   const [adresseFeil, setAdresseFeil] = useState<string | undefined>(undefined);
@@ -39,13 +41,12 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
   const oppdaterFelt = (navn: keyof typeof TOMT_SKJEMA, verdi: string) =>
     setFelt((forrige) => ({ ...forrige, [navn]: verdi }));
 
-  const leggTilAnsvarlig = () => {
-    const navn = felt.ansvarlig.trim();
-    if (!navn || ansvarlige.includes(navn)) {
-      oppdaterFelt("ansvarlig", "");
-      return;
+  /** Feltet tar en hel liste om gangen: «Ola, Kari» blir to navn. */
+  const leggTilAnsvarlige = () => {
+    const nye = tolkNavneliste(felt.ansvarlig);
+    if (nye.length > 0) {
+      setAnsvarlige((forrige) => [...new Set([...forrige, ...nye])]);
     }
-    setAnsvarlige((forrige) => [...forrige, navn]);
     oppdaterFelt("ansvarlig", "");
   };
 
@@ -73,10 +74,8 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
     }
     setAdresseFeil(undefined);
 
-    // Et navn som står igjen i feltet uten å være lagt til som tag skal telle med.
-    const ventende = felt.ansvarlig.trim();
-    const alleAnsvarlige =
-      ventende && !ansvarlige.includes(ventende) ? [...ansvarlige, ventende] : ansvarlige;
+    // Navn som står igjen i feltet uten å være lagt til som tag skal telle med.
+    const alleAnsvarlige = [...new Set([...ansvarlige, ...tolkNavneliste(felt.ansvarlig)])];
 
     const antall = felt.antallKunder.trim();
     const lagret = await onLagre({
@@ -92,14 +91,14 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
   return (
     <Card>
       <Card.ContentContainer>
-        <Card.Heading title="Nytt oppdrag" titleTag="h2" />
+        <Card.Heading title="Ny leveranse" titleTag="h2" />
         <Card.Content>
           <form onSubmit={submit} noValidate>
             <div className="stabel">
               <TextArea
                 id="adresser"
                 label="Adresser"
-                helperText="Én adresse per linje. Flere linjer gir ett oppdrag per adresse, med samme ansvarlige, antall kunder og notat."
+                helperText="Én adresse per linje. Alle linjene blir én leveranse, med samme ansvarlige, antall kunder og notat."
                 errorText={adresseFeil}
                 rows={3}
                 value={felt.adresser}
@@ -111,14 +110,14 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
                   <div className="rad__vokser">
                     <TextField
                       id="ansvarlig"
-                      label="Ansvarlige"
-                      helperText="Skriv et navn og trykk «Legg til»."
+                      label="Hvem skal dit?"
+                      helperText="Ett navn eller flere skilt med komma."
                       value={felt.ansvarlig}
                       onChange={(event) => oppdaterFelt("ansvarlig", event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
                           event.preventDefault();
-                          leggTilAnsvarlig();
+                          leggTilAnsvarlige();
                         }
                       }}
                     />
@@ -126,7 +125,7 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
                   <Button
                     variant="secondary"
                     type="button"
-                    onClick={leggTilAnsvarlig}
+                    onClick={leggTilAnsvarlige}
                     disabled={felt.ansvarlig.trim() === ""}
                   >
                     Legg til
@@ -151,7 +150,7 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
 
               <TextField
                 id="antall-kunder"
-                label="Antall kunder"
+                label="Antall kunder per adresse"
                 type="number"
                 min={0}
                 value={felt.antallKunder}
@@ -161,7 +160,7 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
               <TextArea
                 id="notat"
                 label="Notat / mer info"
-                helperText="Det crewet trenger å vite før oppdraget starter."
+                helperText="Det crewet trenger å vite før leveransen starter."
                 rows={4}
                 value={felt.notat}
                 onChange={(event) => oppdaterFelt("notat", event.target.value)}
@@ -185,7 +184,7 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
                   Legg på kartet
                 </Button>
                 <Button variant="text" type="button" onClick={tomSkjema} disabled={laster}>
-                  Tøm / nytt oppdrag
+                  Tøm / ny leveranse
                 </Button>
               </div>
             </div>

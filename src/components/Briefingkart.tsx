@@ -9,11 +9,11 @@ import { Paragraph } from "@purpurds/purpur";
 
 import { Briefing } from "./Briefing";
 import { KONTOR } from "../lib/kontor";
-import type { Oppdrag } from "../types";
+import type { Leveranse } from "../types";
 
 // Leaflet slår opp markørbildene via relative stier som ikke overlever
 // bundling – derfor pekes de eksplisitt på filene Vite har hashet.
-const oppdragsIkon = L.icon({
+const stoppIkon = L.icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIcon2x,
   shadowUrl: markerShadow,
@@ -31,29 +31,48 @@ const kontorIkon = L.divIcon({
   popupAnchor: [0, -18],
 });
 
-const OPPDRAG_ZOOM = 16;
+const STOPP_ZOOM = 16;
 const KONTOR_ZOOM = 12;
 
-type Props = {
-  oppdrag: Oppdrag[];
-  aktivtOppdragId: string | null;
-  /** Endres hver gang et oppdrag velges, også når det samme velges på nytt. */
-  fokusTeller: number;
-  /** Endres når kartet skal ramme inn kontoret og alle oppdrag. */
-  visAlleTeller: number;
+/** Hvilke punkter kartet skal ramme inn, og når det skal gjøres på nytt. */
+export type Innramming = {
+  /** Leveransen som skal rammes inn. Null = kontoret og alle leveranser. */
+  leveranseId: string | null;
+  /** Økes hver gang noen ber om innramming, også for samme leveranse. */
+  teller: number;
 };
 
-export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller, visAlleTeller }: Props) {
+type Props = {
+  leveranser: Leveranse[];
+  aktivtStoppId: string | null;
+  /** Endres hver gang et stopp velges, også når det samme velges på nytt. */
+  fokusTeller: number;
+  innramming: Innramming;
+};
+
+export function Briefingkart({ leveranser, aktivtStoppId, fokusTeller, innramming }: Props) {
   const markorer = useRef(new Map<string, LeafletMarker>());
   const kontor = KONTOR.posisjon;
-  const aktivt = oppdrag.find((o) => o.id === aktivtOppdragId) ?? null;
+
+  const aktivt = leveranser
+    .flatMap((leveranse) => leveranse.stopp.map((stopp) => ({ leveranse, stopp })))
+    .find(({ stopp }) => stopp.id === aktivtStoppId);
+
+  const innrammet =
+    innramming.leveranseId === null
+      ? leveranser
+      : leveranser.filter((leveranse) => leveranse.id === innramming.leveranseId);
+
+  const punkter: [number, number][] = innrammet.flatMap((leveranse) =>
+    leveranse.stopp.map((stopp): [number, number] => [stopp.adresse.lat, stopp.adresse.lon]),
+  );
 
   useEffect(() => {
-    if (!aktivtOppdragId) return;
+    if (!aktivtStoppId) return;
     // Popup-en åpnes etter at markøren er montert, slik at briefingen vises
-    // med én gang oppdraget legges til eller velges i lista.
-    markorer.current.get(aktivtOppdragId)?.openPopup();
-  }, [aktivtOppdragId, fokusTeller, oppdrag]);
+    // med én gang stoppet legges til eller velges i lista.
+    markorer.current.get(aktivtStoppId)?.openPopup();
+  }, [aktivtStoppId, fokusTeller, leveranser]);
 
   return (
     <MapContainer center={[kontor.lat, kontor.lon]} zoom={KONTOR_ZOOM} scrollWheelZoom>
@@ -64,13 +83,12 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller, visAlleTel
       />
 
       <KartKamera
-        fokus={aktivt ? [aktivt.adresse.lat, aktivt.adresse.lon] : null}
+        fokus={aktivt ? [aktivt.stopp.adresse.lat, aktivt.stopp.adresse.lon] : null}
         fokusTeller={fokusTeller}
-        punkter={[
-          [kontor.lat, kontor.lon],
-          ...oppdrag.map((o): [number, number] => [o.adresse.lat, o.adresse.lon]),
-        ]}
-        visAlleTeller={visAlleTeller}
+        // Kontoret rammes inn sammen med alt, men ikke når én leveranse vises
+        // for seg – da er det adressene crewet skal se.
+        punkter={innramming.leveranseId === null ? [[kontor.lat, kontor.lon], ...punkter] : punkter}
+        innrammingTeller={innramming.teller}
       />
 
       <Marker position={[kontor.lat, kontor.lon]} icon={kontorIkon} zIndexOffset={-100}>
@@ -82,21 +100,23 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller, visAlleTel
         </Popup>
       </Marker>
 
-      {oppdrag.map((o) => (
-        <Marker
-          key={o.id}
-          position={[o.adresse.lat, o.adresse.lon]}
-          icon={oppdragsIkon}
-          ref={(markor) => {
-            if (markor) markorer.current.set(o.id, markor);
-            else markorer.current.delete(o.id);
-          }}
-        >
-          <Popup>
-            <Briefing oppdrag={o} />
-          </Popup>
-        </Marker>
-      ))}
+      {leveranser.flatMap((leveranse) =>
+        leveranse.stopp.map((stopp) => (
+          <Marker
+            key={stopp.id}
+            position={[stopp.adresse.lat, stopp.adresse.lon]}
+            icon={stoppIkon}
+            ref={(markor) => {
+              if (markor) markorer.current.set(stopp.id, markor);
+              else markorer.current.delete(stopp.id);
+            }}
+          >
+            <Popup>
+              <Briefing leveranse={leveranse} stopp={stopp} />
+            </Popup>
+          </Marker>
+        )),
+      )}
     </MapContainer>
   );
 }
@@ -104,18 +124,18 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller, visAlleTel
 /**
  * Styrer kameraet. Begge effektene kjører bare når sin egen teller økes, og
  * leser posisjonene fra refs. Da flytter ikke kartet seg av seg selv når et
- * oppdrag legges til eller fjernes – bare når noen ber om det.
+ * stopp legges til eller fjernes – bare når noen ber om det.
  */
 function KartKamera({
   fokus,
   fokusTeller,
   punkter,
-  visAlleTeller,
+  innrammingTeller,
 }: {
   fokus: [number, number] | null;
   fokusTeller: number;
   punkter: [number, number][];
-  visAlleTeller: number;
+  innrammingTeller: number;
 }) {
   const kart = useMap();
   const sisteFokus = useRef(fokus);
@@ -128,16 +148,22 @@ function KartKamera({
 
   useEffect(() => {
     if (fokusTeller === 0 || !sisteFokus.current) return;
-    kart.flyTo(sisteFokus.current, Math.max(kart.getZoom(), OPPDRAG_ZOOM), { duration: 0.8 });
+    kart.flyTo(sisteFokus.current, Math.max(kart.getZoom(), STOPP_ZOOM), { duration: 0.8 });
   }, [kart, fokusTeller]);
 
   useEffect(() => {
-    if (visAlleTeller === 0 || sistePunkter.current.length < 2) return;
-    kart.fitBounds(L.latLngBounds(sistePunkter.current), {
-      padding: [48, 48],
-      maxZoom: OPPDRAG_ZOOM,
-    });
-  }, [kart, visAlleTeller]);
+    if (innrammingTeller === 0) return;
+    const punkter = sistePunkter.current;
+    if (punkter.length === 0) return;
+
+    // Én adresse har ingen utstrekning å ramme inn – da flys det dit i stedet.
+    if (punkter.length === 1) {
+      kart.flyTo(punkter[0], Math.max(kart.getZoom(), STOPP_ZOOM), { duration: 0.8 });
+      return;
+    }
+
+    kart.fitBounds(L.latLngBounds(punkter), { padding: [48, 48], maxZoom: STOPP_ZOOM });
+  }, [kart, innrammingTeller]);
 
   return null;
 }

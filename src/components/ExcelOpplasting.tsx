@@ -30,8 +30,9 @@ export function ExcelOpplasting({ onFil, laster, resultat, feilmelding, onLukkMe
         <Card.Content>
           <div className="stabel">
             <Paragraph variant="paragraph-100">
-              Last opp GDA-uttrekket (.xlsx). Hvert dagsark leses, radene grupperes per adresse, og
-              antall kunder telles automatisk.
+              Last opp GDA-uttrekket (.xlsx). Hvert dagsark blir én leveranse med alle adressene
+              sine, antall kunder telles automatisk, og du får spørsmål om hvem som skal ut på hver
+              av dem.
             </Paragraph>
 
             <div>

@@ -1,19 +1,29 @@
 import { lesArbeidsbok, XlsxFeil, type Ark, type Celle } from "./xlsx";
-import { TOMT_UTSTYR, type OppdragUtkast, type Utstyr, type UtstyrKategori } from "../types";
+import {
+  TOMT_UTSTYR,
+  type LeveranseUtkast,
+  type StoppUtkast,
+  type Utstyr,
+  type UtstyrKategori,
+} from "../types";
 
 export { XlsxFeil };
 
 /**
- * Leser en leveranseliste (GDA-uttrekk) og lager ett oppdrag per adresse.
+ * Leser en leveranseliste (GDA-uttrekk) og lager én leveranse per dagsark.
  *
- * Arkene med datoer i navnet er én leveransedag hver, med én rad per kunde.
- * Radene grupperes på gate + husnummer, slik at hver oppgang blir én markør
- * med antall kunder, utstyrsfordeling og kommentarer samlet.
+ * Hvert ark med datoer i navnet er én dag crewet er ute, med én rad per kunde.
+ * Radene grupperes på gate + husnummer, slik at hver oppgang blir ett stopp i
+ * leveransen – med antall kunder, utstyrsfordeling og kommentarer samlet.
+ * Dagen holdes samlet som én leveranse, ikke som like mange løse oppdrag som
+ * den har adresser.
  */
-export function lesLeveranser(data: Uint8Array): OppdragUtkast[] {
+export function lesLeveranser(data: Uint8Array): LeveranseUtkast[] {
   const ark = lesArbeidsbok(data);
   const info = lesInformasjonsfane(ark);
-  const utkast = velgDagsark(ark).flatMap((a) => lesDagsark(a, info));
+  const utkast = velgDagsark(ark)
+    .map((a) => lesDagsark(a, info))
+    .filter((leveranse): leveranse is LeveranseUtkast => leveranse !== null);
 
   if (utkast.length === 0) {
     throw new XlsxFeil(
@@ -26,12 +36,14 @@ export function lesLeveranser(data: Uint8Array): OppdragUtkast[] {
 
 /**
  * Arbeidsboka har både dagsark og hjelpeark. «Underlag» er rålista med alle
- * kunder i prosjektet og ville laget et duplikat av hver adresse uten
- * utstyrsmerking, så bare arkene som faktisk er en leveransedag skal med.
- * Dagsarkene kjennes igjen på inn-/ut-kolonnene crewet fyller ut.
+ * kunder i prosjektet og ville blitt en egen leveranse med duplikater av hver
+ * adresse, så hjelpearkene lukes ut på navn først. Av resten kjennes dagsarkene
+ * igjen på inn-/ut-kolonnene crewet fyller ut.
  */
 function velgDagsark(ark: Ark[]): Ark[] {
-  const medListe = ark.filter((a) => finnOverskriftsrad(a) !== -1);
+  const medListe = ark.filter(
+    (a) => finnOverskriftsrad(a) !== -1 && !/informasjon|underlag/i.test(a.navn),
+  );
   const dagsark = medListe.filter((a) => {
     const overskrifter = overskrifterFor(a);
     return ["inn", "ut", "tps"].some((o) => overskrifter.includes(o));
@@ -39,9 +51,7 @@ function velgDagsark(ark: Ark[]): Ark[] {
 
   // Skulle en fil mangle inn-/ut-kolonnene, er det bedre å ta med arkene som
   // ligner en liste enn å importere ingenting.
-  return dagsark.length > 0
-    ? dagsark
-    : medListe.filter((a) => !/informasjon|underlag/i.test(a.navn));
+  return dagsark.length > 0 ? dagsark : medListe;
 }
 
 function overskrifterFor(ark: Ark): string[] {
@@ -75,9 +85,9 @@ const KJENTE_OVERSKRIFTER = new Set(
   ].map((o) => o.toLowerCase()),
 );
 
-function lesDagsark(ark: Ark, info: Map<string, string>): OppdragUtkast[] {
+function lesDagsark(ark: Ark, info: Map<string, string>): LeveranseUtkast | null {
   const overskriftsrad = finnOverskriftsrad(ark);
-  if (overskriftsrad === -1) return [];
+  if (overskriftsrad === -1) return null;
 
   const overskrifter = ark.rader[overskriftsrad].map((c) => c.verdi.trim());
   const kolonne = (navn: string) =>
@@ -90,14 +100,14 @@ function lesDagsark(ark: Ark, info: Map<string, string>): OppdragUtkast[] {
   const kLeilighet = kolonne("Apartament number");
   const kKommentar1 = kolonne("Kommentar 1");
   const kKommentar2 = kolonne("Kommentar 2");
-  if (kGate === -1 || kNummer === -1) return [];
+  if (kGate === -1 || kNummer === -1) return null;
 
   // Navnene på crewet står som egne kolonneoverskrifter etter "Ut".
   const ansvarlige = overskrifter.filter(
     (o) => o !== "" && !KJENTE_OVERSKRIFTER.has(o.toLowerCase()),
   );
 
-  const perAdresse = new Map<string, OppdragUtkast>();
+  const perAdresse = new Map<string, StoppUtkast>();
 
   for (const rad of ark.rader.slice(overskriftsrad + 1)) {
     const gate = tekst(rad[kGate]);
@@ -107,35 +117,52 @@ function lesDagsark(ark: Ark, info: Map<string, string>): OppdragUtkast[] {
     const bokstav = kBokstav === -1 ? "" : tekst(rad[kBokstav]);
     const adresse = `${gate} ${nummer}${bokstav && bokstav !== "-" ? bokstav : ""}`;
 
-    let oppdrag = perAdresse.get(adresse);
-    if (!oppdrag) {
-      oppdrag = {
+    let stopp = perAdresse.get(adresse);
+    if (!stopp) {
+      stopp = {
         soketekst: [adresse, info.get("sted")].filter(Boolean).join(", "),
-        ansvarlige,
         antallKunder: 0,
-        notat: byggNotat(info),
-        dato: ark.navn,
         utstyr: { ...TOMT_UTSTYR },
         kommentarer: [],
       };
-      perAdresse.set(adresse, oppdrag);
+      perAdresse.set(adresse, stopp);
     }
 
-    oppdrag.antallKunder = (oppdrag.antallKunder ?? 0) + 1;
-    if (oppdrag.utstyr) {
-      oppdrag.utstyr[klassifiserUtstyr(rad[kNavn]?.fyll ?? null)] += 1;
+    stopp.antallKunder = (stopp.antallKunder ?? 0) + 1;
+    if (stopp.utstyr) {
+      stopp.utstyr[klassifiserUtstyr(rad[kNavn]?.fyll ?? null)] += 1;
     }
 
     const leilighet = kLeilighet === -1 ? "" : tekst(rad[kLeilighet]);
     for (const kolonneNr of [kKommentar1, kKommentar2]) {
       const kommentar = kolonneNr === -1 ? "" : tekst(rad[kolonneNr]);
       if (kommentar && kommentar !== "-") {
-        oppdrag.kommentarer.push({ leilighet, tekst: kommentar });
+        stopp.kommentarer.push({ leilighet, tekst: kommentar });
       }
     }
   }
 
-  return [...perAdresse.values()];
+  const stopp = [...perAdresse.values()];
+  if (stopp.length === 0) return null;
+
+  return {
+    dato: ark.navn,
+    toppinfo: lesToppinfo(ark),
+    ansvarlige,
+    notat: byggNotat(info),
+    stopp,
+  };
+}
+
+/**
+ * B1, C1 og H1 i dagsarket er det crewet må vite først – de står derfor øverst
+ * i briefingen, før adressen. Tomme celler faller bort.
+ */
+function lesToppinfo(ark: Ark): string[] {
+  const rad = ark.rader[0] ?? [];
+  return [1, 2, 7]
+    .map((kolonne) => tekst(rad[kolonne]))
+    .filter((verdi) => verdi !== "" && verdi !== "-");
 }
 
 /** Informasjonsfanen er en ren nøkkel/verdi-liste med felles info for leveransen. */

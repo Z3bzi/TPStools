@@ -2,36 +2,46 @@ import { Badge, ColorDot, Paragraph } from "@purpurds/purpur";
 
 import { formaterAdresse } from "../lib/geonorge";
 import { summerUtstyr } from "../lib/leveranse";
-import { UTSTYR_ETIKETT, UTSTYR_FARGE, type Oppdrag } from "../types";
+import { UTSTYR_ETIKETT, UTSTYR_FARGE, type Leveranse, type Stopp } from "../types";
 import { Kjoretidsbadge } from "./Kjoretidsbadge";
 
 /** Innholdet i markørboblen – det crewet leser i oppstartsmøtet. */
-export function Briefing({ oppdrag }: { oppdrag: Oppdrag }) {
-  const utstyr = summerUtstyr(oppdrag.utstyr);
+export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: Stopp }) {
+  const utstyr = summerUtstyr(stopp.utstyr);
 
   return (
     <div className="briefing stabel">
+      {leveranse.toppinfo.length > 0 && (
+        <div className="toppinfo">
+          {leveranse.toppinfo.map((verdi, indeks) => (
+            <Paragraph variant="paragraph-100-bold" key={`${verdi}-${indeks}`}>
+              {verdi}
+            </Paragraph>
+          ))}
+        </div>
+      )}
+
       <div className="rad">
-        <Paragraph variant="paragraph-100-bold">{formaterAdresse(oppdrag.adresse)}</Paragraph>
-        {oppdrag.dato && (
+        <Paragraph variant="paragraph-100-bold">{formaterAdresse(stopp.adresse)}</Paragraph>
+        {leveranse.dato && (
           <Badge variant="special" showIcon={false}>
-            {oppdrag.dato}
+            {leveranse.dato}
           </Badge>
         )}
       </div>
 
       <Felt tittel="Ansvarlige">
-        {oppdrag.ansvarlige.length > 0 ? oppdrag.ansvarlige.join(", ") : "Ikke satt"}
+        {leveranse.ansvarlige.length > 0 ? leveranse.ansvarlige.join(", ") : "Ikke satt"}
       </Felt>
 
       <Felt tittel="Antall kunder">
-        {oppdrag.antallKunder === null ? "Ikke satt" : String(oppdrag.antallKunder)}
+        {stopp.antallKunder === null ? "Ikke satt" : String(stopp.antallKunder)}
       </Felt>
 
       <div>
         <Paragraph variant="additional-100-bold">Kjøretid fra kontoret</Paragraph>
         <div className="rad">
-          <Kjoretidsbadge kjoretid={oppdrag.kjoretid} />
+          <Kjoretidsbadge kjoretid={stopp.kjoretid} />
         </div>
       </div>
 
@@ -51,21 +61,21 @@ export function Briefing({ oppdrag }: { oppdrag: Oppdrag }) {
         </div>
       )}
 
-      {oppdrag.notat !== "" && (
+      {leveranse.notat !== "" && (
         <div>
           <Paragraph variant="additional-100-bold">Notat</Paragraph>
           <Paragraph variant="paragraph-100" className="notat">
-            {oppdrag.notat}
+            {leveranse.notat}
           </Paragraph>
         </div>
       )}
 
-      {oppdrag.kommentarer.length > 0 && (
+      {stopp.kommentarer.length > 0 && (
         <div>
           <Paragraph variant="additional-100-bold">
-            Kommentarer ({oppdrag.kommentarer.length})
+            Kommentarer ({stopp.kommentarer.length})
           </Paragraph>
-          {oppdrag.kommentarer.map((kommentar, indeks) => (
+          {stopp.kommentarer.map((kommentar, indeks) => (
             <Paragraph variant="paragraph-100" key={`${kommentar.leilighet}-${indeks}`}>
               {kommentar.leilighet ? `${kommentar.leilighet}: ` : ""}
               {kommentar.tekst}
