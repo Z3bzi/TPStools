@@ -121,3 +121,47 @@ body {
   margin: var(--purpur-spacing-300);
   width: 16rem !important;
 }
+
+/* Kontormarkøren: lilla boble med kontorikon, tegnet som divIcon i Leaflet. */
+.kontor-markor {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--purpur-color-purple-550);
+  color: var(--purpur-color-functional-white);
+  border: 2px solid var(--purpur-color-functional-white);
+  box-shadow: var(--purpur-shadow-md);
+}
+
+.kontor-markor svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* Lange briefinger skal ikke sprenge kartflaten. */
+.leaflet-popup-content .briefing {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.notat {
+  white-space: pre-line;
+}
+
+.utstyr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-50);
+}
+
+.utstyr__rad {
+  display: flex;
+  align-items: center;
+  gap: var(--purpur-spacing-100);
+}
+
+.skjult-fil {
+  display: none;
+}
