@@ -27,7 +27,7 @@ export type Kommentar = {
   tekst: string;
 };
 
-/** Estimert kjøring fra kontoret til et oppdrag. */
+/** Estimert kjøring fra kontoret til et stopp. */
 export type Kjoretid = {
   /** Kjøretid i sekunder. */
   sekunder: number;
@@ -37,34 +37,50 @@ export type Kjoretid = {
   kilde: "vei" | "luftlinje";
 };
 
-/** Et oppdrag slik det vises som markør på kartet. */
-export type Oppdrag = {
+/** Ett stopp i en leveranse: én oppgang, med kundene som bor der. */
+export type Stopp = {
   id: string;
   /** Adressen slik den ble skrevet inn eller lest fra lista. */
   soketekst: string;
   /** Adressen slik Kartverket bekreftet den. */
   adresse: AdresseTreff;
-  ansvarlige: string[];
   antallKunder: number | null;
-  notat: string;
-  opprettet: string;
-  /** Arkfanen oppdraget kom fra, f.eks. "15.09". Null for manuelle oppdrag. */
-  dato: string | null;
   utstyr: Utstyr | null;
   kommentarer: Kommentar[];
   /** Kjøretid fra kontoret. `null` mens ruting pågår. */
   kjoretid: Kjoretid | null;
 };
 
-/** Et oppdrag før adressen er slått opp hos Kartverket. */
-export type OppdragUtkast = {
-  soketekst: string;
-  ansvarlige: string[];
-  antallKunder: number | null;
-  notat: string;
+/**
+ * En leveranse er én dag crewet er ute: ett dagsark fra lista, eller ett
+ * manuelt innlegg. Alle adressene dagen består av ligger som stopp, og vises
+ * som hver sin markør på kartet.
+ */
+export type Leveranse = {
+  id: string;
+  /** Dagsarkets navn, f.eks. "15.09". Null når leveransen er lagt inn manuelt. */
   dato: string | null;
+  ansvarlige: string[];
+  notat: string;
+  opprettet: string;
+  stopp: Stopp[];
+};
+
+/** Et stopp før adressen er slått opp hos Kartverket. */
+export type StoppUtkast = {
+  soketekst: string;
+  antallKunder: number | null;
   utstyr: Utstyr | null;
   kommentarer: Kommentar[];
+};
+
+/** En leveranse slik den kommer ut av lista, før adressene er slått opp. */
+export type LeveranseUtkast = {
+  dato: string | null;
+  /** Navnene som sto i arket. Kan overstyres i dialogen før import. */
+  ansvarlige: string[];
+  notat: string;
+  stopp: StoppUtkast[];
 };
 
 export const TOMT_UTSTYR: Utstyr = {

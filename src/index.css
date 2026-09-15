@@ -165,3 +165,28 @@ body {
 .skjult-fil {
   display: none;
 }
+
+/* Adressene i en leveranse. En lang dag skal ikke skyve resten av panelet ned. */
+.stoppliste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-200);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.stoppliste__rad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-100);
+  padding-left: var(--purpur-spacing-200);
+  border-left: var(--purpur-border-width-md) solid var(--purpur-color-border-weak);
+}
+
+/* Stoppet briefingen står åpen på, så lista og kartet peker på det samme. */
+.stoppliste__rad--aktiv {
+  border-left-color: var(--purpur-color-background-interactive-primary);
+}
