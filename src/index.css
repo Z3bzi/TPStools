@@ -1,0 +1,123 @@
+/*
+ * Kun layout og kart-flaten. All farge, typografi og avstand hentes fra
+ * Purpurs designtokens (--purpur-*) — ingen egendefinerte verdier.
+ */
+
+:root {
+  /*
+   * Purpurs avstands- og typografitokens er definert som
+   * calc(<verdi> * var(--purpur-rescale)). Pakken setter ikke selve faktoren –
+   * den skal komme fra appen. Uten den blir alle calc()-ene ugyldige og hele
+   * UI-et mister avstander og skriftstørrelser. 1 = Purpurs standardskala.
+   */
+  --purpur-rescale: 1;
+
+  font-family: var(--purpur-typography-family-default);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--purpur-color-background-primary);
+  color: var(--purpur-color-text-default);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.app__topp {
+  padding: var(--purpur-spacing-300) var(--purpur-spacing-400);
+  background-color: var(--purpur-color-background-secondary);
+  border-bottom: var(--purpur-border-width-xs) solid var(--purpur-color-border-weak);
+}
+
+.app__innhold {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(20rem, 26rem) 1fr;
+  gap: var(--purpur-spacing-400);
+  padding: var(--purpur-spacing-400);
+  align-items: start;
+}
+
+.app__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-300);
+}
+
+.app__kart {
+  position: sticky;
+  top: var(--purpur-spacing-400);
+  height: calc(100vh - var(--purpur-spacing-1000));
+  min-height: 24rem;
+  overflow: hidden;
+  border-radius: var(--purpur-border-radius-md);
+  border: var(--purpur-border-width-xs) solid var(--purpur-color-border-weak);
+}
+
+@media (max-width: 900px) {
+  .app__innhold {
+    grid-template-columns: 1fr;
+  }
+
+  .app__kart {
+    position: static;
+    height: 60vh;
+  }
+}
+
+.stabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-200);
+}
+
+.rad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--purpur-spacing-200);
+  align-items: center;
+}
+
+.rad--mellomrom {
+  justify-content: space-between;
+}
+
+.rad__vokser {
+  flex: 1 1 12rem;
+}
+
+/* Kart-flaten: Leaflet krever eksplisitt høyde. */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  font-family: inherit;
+}
+
+/* Popup-boblen får Purpur-flate slik at innholdet ser ut som resten av UI-et. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background-color: var(--purpur-color-background-primary);
+  color: var(--purpur-color-text-default);
+  border-radius: var(--purpur-border-radius-md);
+}
+
+.leaflet-popup-content {
+  margin: var(--purpur-spacing-300);
+  width: 16rem !important;
+}
