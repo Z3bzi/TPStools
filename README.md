@@ -1,26 +1,77 @@
-# TPStools
+# Briefingkart – Telia Personlig Service Crew
 
-> Placeholder – innholdet i denne README-en er foreløpig og skal erstattes.
+Verktøy som viser ett eller flere oppdrag på kart, med en markørboble som
+inneholder informasjonen crewet trenger i oppstartsmøtet: ansvarlige, antall
+kunder og notat.
 
-Samling av verktøy for TPS.
+Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
-## Status
+## Slik virker det
 
-Prosjektet er nyoppstartet. Kode og dokumentasjon kommer.
+1. Fyll ut skjemaet: adresse, ansvarlige, antall kunder og notat.
+2. Ved lagring slås adressen opp hos Kartverkets åpne adresse-API.
+3. Oppdraget settes som markør, og kartet flyr til stedet med briefingen åpen.
+4. Flere oppdrag kan ligge på kartet samtidig, hver med sin egen boble.
+
+Oppdragene lever i nettleserens minne så lenge fanen er åpen, og forsvinner ved
+refresh. Det er bevisst for et briefingverktøy – ingen kundedata lagres noe sted.
+
+## Teknologi
+
+| Del             | Valg                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| Rammeverk       | React 19 + Vite                                                       |
+| Design          | [`@purpurds/purpur`](https://www.npmjs.com/package/@purpurds/purpur) – Telias designsystem |
+| Kart            | react-leaflet + Leaflet, tiles fra OpenStreetMap                       |
+| Geokoding       | Kartverket: `https://ws.geonorge.no/adresser/v1/sok`                   |
+| Hosting         | Statisk build på GitHub Pages                                          |
+
+Alt UI utenom selve kartflaten er bygget med Purpur-komponenter (`Button`,
+`Card`, `TextField`, `TextArea`, `DismissableChipGroup`, `Notification`,
+`Badge`, `Heading`, `Paragraph`). Egen CSS brukes kun til sidelayout og
+kartflaten, og henter farger, avstander og radier fra Purpurs designtokens.
+
+### Merk om `--purpur-rescale`
+
+Purpurs avstands- og typografitokens er definert som
+`calc(<verdi> * var(--purpur-rescale))`, men pakken setter ikke selve faktoren.
+Uten `--purpur-rescale` blir alle disse `calc()`-ene ugyldige, og UI-et mister
+avstander og skriftstørrelser. Appen setter den derfor til `1` i
+`src/index.css`.
 
 ## Kom i gang
 
 ```bash
-git clone https://github.com/z3bzi/tpstools.git
-cd tpstools
+npm install
+npm run dev      # utviklingsserver
+npm run build    # typesjekk + produksjonsbuild til dist/
+npm run preview  # se på produksjonsbuilden lokalt
+npm run lint     # oxlint
 ```
 
 ## Struktur
 
-| Mappe | Beskrivelse |
-| ----- | ----------- |
-| –     | Ikke opprettet ennå |
+| Fil                                | Ansvar                                              |
+| ---------------------------------- | --------------------------------------------------- |
+| `src/App.tsx`                      | Tilstand for oppdrag, geokoding og valgt oppdrag     |
+| `src/components/OppdragSkjema.tsx` | Skjemaet, bygget med Purpur-komponenter              |
+| `src/components/Briefingkart.tsx`  | Leaflet-kartet, markører og briefing-popup           |
+| `src/components/OppdragsListe.tsx` | Oppdragene som kort, med «Vis på kartet» og «Fjern»  |
+| `src/lib/geonorge.ts`              | Adressesøk mot Kartverket                            |
+| `src/index.css`                    | Sidelayout og kartflate, bygget på Purpur-tokens     |
 
-## Lisens
+## Deploy
 
-Ikke bestemt ennå.
+`.github/workflows/deploy.yml` bygger og publiserer til GitHub Pages ved push
+til `main`. Pages må stå på «GitHub Actions» som kilde under
+Settings → Pages.
+
+Builden bruker `base: "./"` i `vite.config.ts`, slik at samme artefakt virker
+både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
+
+## Videre arbeid
+
+- Adresseforslag mens man skriver (Purpur `Autocomplete` mot samme Kartverk-API).
+- Valg mellom flere adressetreff når søket er tvetydig – i dag brukes Kartverkets
+  beste treff, og hele den bekreftede adressen vises slik at feiltreff synes.
+- Deling av en briefing via lenke, f.eks. oppdragene kodet i URL-en.
