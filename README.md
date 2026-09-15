@@ -23,8 +23,8 @@ til én enkelt dag.
 3. Bakgrunnsfargen på navnecellen leses som utstyr:
    gul = ruter og TV-boks, blå = kun ruter, oransje = kun TV-boks.
    Andre farger telles som «annen merking» framfor å bli gjettet på.
-4. B1, C1 og H1 i dagsarket leses som toppinfo og står øverst i boblen, før
-   adressen. Tomme celler faller bort.
+4. B1, C1 og H1 i dagsarket leses som toppinfo og står øverst både i
+   leveransekortet og i boblen. Tomme celler faller bort.
 5. Ansvarlige hentes fra navnekolonnene i overskriftsraden, og fellesinfo
    (leveransetype, plattform, TV/BB, kontaktperson, parkering, prosjektleder)
    fra informasjonsfanen. Radkommentarer følger med per leilighet.
@@ -124,6 +124,7 @@ npm run lint     # oxlint
 | `src/components/Briefing.tsx`      | Innholdet i markørboblen                             |
 | `src/components/LeveranseListe.tsx` | Leveransene som kort, med adressene sine            |
 | `src/components/Kjoretidsbadge.tsx`| Kjøretiden som Purpur-badge, lik i lista og i boblen |
+| `src/components/Toppinfo.tsx`      | Toppinfoen fra dagsarket, lik i lista og i boblen     |
 | `src/lib/xlsx.ts`                  | Minimal .xlsx-leser som også henter cellefarger      |
 | `src/lib/leveranse.ts`             | Tolker leveranselista til én leveranse per dagsark   |
 | `src/lib/kontor.ts`                | Kontoret på Økern Portal                             |

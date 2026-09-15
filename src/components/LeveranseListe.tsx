@@ -11,6 +11,7 @@ import {
   type UtstyrKategori,
 } from "../types";
 import { Kjoretidsbadge } from "./Kjoretidsbadge";
+import { Toppinfo } from "./Toppinfo";
 
 type Props = {
   leveranser: Leveranse[];
@@ -79,6 +80,8 @@ export function LeveranseListe({
               <Card.Heading title={leveranse.dato ?? "Lagt inn manuelt"} titleTag="h3" />
               <Card.Content>
                 <div className="stabel">
+                  <Toppinfo linjer={leveranse.toppinfo} />
+
                   <div className="rad">
                     <Badge variant="information" showIcon={false}>
                       {leveranse.stopp.length} {leveranse.stopp.length === 1 ? "adresse" : "adresser"}
