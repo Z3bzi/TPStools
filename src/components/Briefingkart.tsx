@@ -8,7 +8,7 @@ import kontorIkonSvg from "@purpurds/purpur/icon/svg/connected-building.svg?raw"
 import { Paragraph } from "@purpurds/purpur";
 
 import { Briefing } from "./Briefing";
-import { KONTOR, useKontorPosisjon } from "../lib/kontor";
+import { KONTOR } from "../lib/kontor";
 import type { Oppdrag } from "../types";
 
 // Leaflet slår opp markørbildene via relative stier som ikke overlever
@@ -45,7 +45,7 @@ type Props = {
 
 export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller, visAlleTeller }: Props) {
   const markorer = useRef(new Map<string, LeafletMarker>());
-  const kontor = useKontorPosisjon();
+  const kontor = KONTOR.posisjon;
   const aktivt = oppdrag.find((o) => o.id === aktivtOppdragId) ?? null;
 
   useEffect(() => {
