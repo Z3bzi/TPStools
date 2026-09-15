@@ -23,4 +23,16 @@ export type Oppdrag = {
   antallKunder: number | null;
   notat: string;
   opprettet: string;
+  /** Kjøretid fra oppmøtestedet. `null` mens oppslaget pågår. */
+  kjoretid: Kjoretid | null;
+};
+
+/** Estimert kjøring fra oppmøtestedet til et oppdrag. */
+export type Kjoretid = {
+  /** Kjøretid i sekunder. */
+  sekunder: number;
+  /** Kjørelengde i meter. */
+  meter: number;
+  /** `vei` = rutet på ekte veinett, `luftlinje` = grovt anslag når ruting feiler. */
+  kilde: "vei" | "luftlinje";
 };

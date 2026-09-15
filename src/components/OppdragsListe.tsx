@@ -2,6 +2,7 @@ import { Badge, Button, Card, Heading, Paragraph } from "@purpurds/purpur";
 
 import { formaterAdresse } from "../lib/geonorge";
 import type { Oppdrag } from "../types";
+import { Kjoretidsbadge } from "./Kjoretidsbadge";
 
 type Props = {
   oppdrag: Oppdrag[];
@@ -54,6 +55,7 @@ export function OppdragsListe({ oppdrag, aktivtOppdragId, onVis, onFjern, onFjer
                   >
                     {o.antallKunder === null ? "Antall kunder ikke satt" : `${o.antallKunder} kunder`}
                   </Badge>
+                  <Kjoretidsbadge kjoretid={o.kjoretid} medStartpunkt />
                 </div>
                 <div className="rad">
                   <Button variant="secondary" onClick={() => onVis(o.id)}>

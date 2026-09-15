@@ -7,7 +7,9 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { Badge, Heading, Paragraph } from "@purpurds/purpur";
 
 import { formaterAdresse } from "../lib/geonorge";
+import { STARTPUNKT } from "../lib/startpunkt";
 import type { Oppdrag } from "../types";
+import { Kjoretidsbadge } from "./Kjoretidsbadge";
 
 // Leaflet slår opp markørbildene via relative stier som ikke overlever
 // bundling – derfor pekes de eksplisitt på filene Vite har hashet.
@@ -19,6 +21,16 @@ const ikon = L.icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
+});
+
+// Oppmøtestedet skal skille seg tydelig fra oppdragene. En divIcon holder det
+// til CSS og Purpur-tokens, uten et ekstra bilde i builden.
+const startIkon = L.divIcon({
+  className: "startmarkor",
+  html: '<span class="startmarkor__prikk"></span>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+  popupAnchor: [0, -9],
 });
 
 /** Hele Norge, brukt som utgangspunkt før første oppdrag er lagt inn. */
@@ -58,6 +70,19 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller }: Props) {
         zoom={OPPDRAG_ZOOM}
         fokusTeller={fokusTeller}
       />
+
+      <Marker position={[STARTPUNKT.lat, STARTPUNKT.lon]} icon={startIkon}>
+        <Popup>
+          <div className="stabel">
+            <Heading tag="h3" variant="title-100">
+              {STARTPUNKT.navn}
+            </Heading>
+            <Paragraph variant="paragraph-100">
+              Oppmøtested. Kjøretiden på hvert oppdrag er regnet herfra.
+            </Paragraph>
+          </div>
+        </Popup>
+      </Marker>
 
       {oppdrag.map((o) => (
         <Marker
@@ -122,6 +147,13 @@ export function Briefing({ oppdrag }: { oppdrag: Oppdrag }) {
         <Badge variant={oppdrag.antallKunder === null ? "neutral" : "information"} showIcon={false}>
           {oppdrag.antallKunder === null ? "Ikke satt" : String(oppdrag.antallKunder)}
         </Badge>
+      </div>
+
+      <div>
+        <Paragraph variant="additional-100-bold">Kjøretid fra {STARTPUNKT.navn}</Paragraph>
+        <div className="rad">
+          <Kjoretidsbadge kjoretid={oppdrag.kjoretid} />
+        </div>
       </div>
 
       <div>

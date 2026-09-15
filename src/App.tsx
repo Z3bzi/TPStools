@@ -5,6 +5,8 @@ import { Briefingkart } from "./components/Briefingkart";
 import { OppdragSkjema, type OppdragUtkast } from "./components/OppdragSkjema";
 import { OppdragsListe } from "./components/OppdragsListe";
 import { GeokodingFeil, sokAdresse } from "./lib/geonorge";
+import { hentKjoretid } from "./lib/kjoretid";
+import { STARTPUNKT } from "./lib/startpunkt";
 import type { Oppdrag } from "./types";
 
 export function App() {
@@ -19,6 +21,13 @@ export function App() {
   const velgOppdrag = (id: string) => {
     setAktivtOppdragId(id);
     setFokusTeller((forrige) => forrige + 1);
+  };
+
+  const beregnKjoretid = async (nytt: Oppdrag) => {
+    // hentKjoretid faller tilbake på et luftlinje-anslag om ruting feiler, og
+    // kaster bare hvis oppslaget avbrytes – det gjør vi ikke her.
+    const kjoretid = await hentKjoretid(STARTPUNKT, nytt.adresse);
+    setOppdrag((forrige) => forrige.map((o) => (o.id === nytt.id ? { ...o, kjoretid } : o)));
   };
 
   const leggTilOppdrag = async (utkast: OppdragUtkast) => {
@@ -37,10 +46,14 @@ export function App() {
         antallKunder: utkast.antallKunder,
         notat: utkast.notat,
         opprettet: new Date().toISOString(),
+        kjoretid: null,
       };
 
       setOppdrag((forrige) => [...forrige, nytt]);
       velgOppdrag(nytt.id);
+      // Ruting skal ikke holde igjen markøren: oppdraget legges ut med én gang,
+      // og kjøretiden fylles inn i kortet og boblen når svaret kommer.
+      void beregnKjoretid(nytt);
       return true;
     } catch (feil) {
       setFeilmelding(
@@ -72,7 +85,7 @@ export function App() {
         </Heading>
         <Paragraph variant="paragraph-100">
           Telia Personlig Service Crew – oppdrag med adresse, ansvarlige, antall kunder og notat,
-          klart til oppstartsmøtet.
+          klart til oppstartsmøtet. Kjøretiden regnes fra {STARTPUNKT.navn}.
         </Paragraph>
       </header>
 

@@ -121,3 +121,14 @@ body {
   margin: var(--purpur-spacing-300);
   width: 16rem !important;
 }
+
+/* Oppmøtestedet: en tydelig prikk som ikke forveksles med oppdragsmarkørene. */
+.startmarkor__prikk {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--purpur-border-radius-full);
+  background-color: var(--purpur-color-background-interactive-primary);
+  border: var(--purpur-border-width-sm) solid var(--purpur-color-background-primary);
+  box-shadow: var(--purpur-shadow-sm);
+}
