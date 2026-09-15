@@ -71,9 +71,8 @@ kilde, så en importert leveranseliste på 60 adresser blir tre forespørsler i
 stedet for seksti. Rutingen skjer i bakgrunnen: markørene legges ut med én gang,
 og tallet fylles inn i kortene og boblene når svaret kommer.
 
-Utgangspunktet er kontorets posisjon slik kartet kjenner den. Adresseoppslaget
-i `src/lib/kontor.ts` deles av markøren og rutingen, så Kartverket spørres én
-gang per økt og begge peker på samme punkt.
+Utgangspunktet er kontorets faste koordinat i `src/lib/kontor.ts` – samme punkt
+som markøren står på.
 
 Svarer ikke tjenesten, regner appen et grovt anslag fra luftlinje ganget med en
 omveisfaktor, med lavere snittfart på korte turer enn på lange. Anslaget er
@@ -133,9 +132,10 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
 
 ## Kjente begrensninger
 
-- Kontorets posisjon slås opp på Lørenfaret 1 ved oppstart, med en fast
-  koordinat som reserve hvis Kartverket ikke svarer. Reservekoordinaten er
-  omtrentlig og kan justeres i `src/lib/kontor.ts`.
+- Kontorets posisjon er en fast koordinat i `src/lib/kontor.ts`, målt opp på
+  bygget. Økern Portal dekker flere adresser, så et adresseoppslag lander ikke
+  nødvendigvis på inngangen crewet kjører fra. Flyttes kontoret, endres
+  koordinaten der.
 - Samme adresse på to dagsark gir to markører oppå hverandre. Datoen står i
   boblen, men markørene ligger på samme punkt.
 - Ved tvetydig adresse brukes Kartverkets beste treff. Hele den bekreftede
