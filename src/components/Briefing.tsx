@@ -4,6 +4,7 @@ import { formaterAdresse } from "../lib/geonorge";
 import { summerUtstyr } from "../lib/leveranse";
 import { UTSTYR_ETIKETT, UTSTYR_FARGE, type Leveranse, type Stopp } from "../types";
 import { Kjoretidsbadge } from "./Kjoretidsbadge";
+import { Toppinfo } from "./Toppinfo";
 
 /** Innholdet i markørboblen – det crewet leser i oppstartsmøtet. */
 export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: Stopp }) {
@@ -11,15 +12,7 @@ export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: St
 
   return (
     <div className="briefing stabel">
-      {leveranse.toppinfo.length > 0 && (
-        <div className="toppinfo">
-          {leveranse.toppinfo.map((verdi, indeks) => (
-            <Paragraph variant="paragraph-100-bold" key={`${verdi}-${indeks}`}>
-              {verdi}
-            </Paragraph>
-          ))}
-        </div>
-      )}
+      <Toppinfo linjer={leveranse.toppinfo} />
 
       <div className="rad">
         <Paragraph variant="paragraph-100-bold">{formaterAdresse(stopp.adresse)}</Paragraph>
