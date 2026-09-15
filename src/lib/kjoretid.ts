@@ -1,4 +1,4 @@
-import { KONTOR } from "./kontor";
+import { hentKontorPosisjon } from "./kontor";
 import type { Kjoretid, Koordinat } from "../types";
 
 const OSRM_URL = "https://router.project-osrm.org/table/v1/driving";
@@ -40,7 +40,8 @@ type OsrmTabell = {
  *
  * Svarer ikke tjenesten, faller hvert mål tilbake på et anslag regnet fra
  * luftlinje. Resultatet er merket med `kilde`, så UI-et kan si fra hvilket av
- * tallene det viser.
+ * tallene det viser. Utgangspunktet er kontorets posisjon slik kartet kjenner
+ * den, altså Kartverkets treff på kontoradressen når det er tilgjengelig.
  *
  * Kaster bare når `signal` avbryter oppslaget; ellers gir den alltid svar.
  */
@@ -48,7 +49,7 @@ export async function hentKjoretider(
   mal: Koordinat[],
   signal?: AbortSignal,
 ): Promise<Kjoretid[]> {
-  const fra = KONTOR.posisjon;
+  const fra = await hentKontorPosisjon();
   const kjoretider: Kjoretid[] = [];
 
   // Bitene tas etter tur, ikke parallelt: demoserveren er en delt ressurs, og

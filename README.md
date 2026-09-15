@@ -71,6 +71,10 @@ kilde, så en importert leveranseliste på 60 adresser blir tre forespørsler i
 stedet for seksti. Rutingen skjer i bakgrunnen: markørene legges ut med én gang,
 og tallet fylles inn i kortene og boblene når svaret kommer.
 
+Utgangspunktet er kontorets posisjon slik kartet kjenner den. Adresseoppslaget
+i `src/lib/kontor.ts` deles av markøren og rutingen, så Kartverket spørres én
+gang per økt og begge peker på samme punkt.
+
 Svarer ikke tjenesten, regner appen et grovt anslag fra luftlinje ganget med en
 omveisfaktor, med lavere snittfart på korte turer enn på lange. Anslaget er
 merket «anslag» i badgen og vises nøytralt i stedet for blått, slik at ingen
@@ -129,16 +133,13 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
 
 ## Kjente begrensninger
 
-- Kontorets posisjon slås opp på Ulvenveien 75 ved oppstart, med en fast
+- Kontorets posisjon slås opp på Lørenfaret 1 ved oppstart, med en fast
   koordinat som reserve hvis Kartverket ikke svarer. Reservekoordinaten er
   omtrentlig og kan justeres i `src/lib/kontor.ts`.
 - Samme adresse på to dagsark gir to markører oppå hverandre. Datoen står i
   boblen, men markørene ligger på samme punkt.
 - Ved tvetydig adresse brukes Kartverkets beste treff. Hele den bekreftede
   adressen vises, slik at feiltreff er synlige.
-- Kjøretiden regnes fra reservekoordinaten i `src/lib/kontor.ts`, ikke fra
-  Kartverket-treffet kartet bruker. Forskjellen er noen titalls meter, og OSRM
-  fester uansett punktet til nærmeste vei.
 
 ## Videre arbeid
 
