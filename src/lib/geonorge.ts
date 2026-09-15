@@ -86,3 +86,47 @@ export function formaterAdresse(adresse: AdresseTreff): string {
   const sted = [adresse.postnummer, adresse.poststed].filter(Boolean).join(" ");
   return [adresse.adressetekst, sted].filter(Boolean).join(", ");
 }
+
+/**
+ * Samme adresse går ofte igjen i en leveranseliste. Treffene mellomlagres for
+ * økta, slik at Kartverket ikke spørres om det samme flere ganger.
+ */
+const mellomlager = new Map<string, AdresseTreff>();
+
+/** Slår opp flere adresser med litt parallellitet, uten å oversvømme API-et. */
+export async function sokAdresser(
+  soketekster: string[],
+  samtidige = 4,
+): Promise<{ soketekst: string; adresse: AdresseTreff | null; feil: string | null }[]> {
+  const kø = [...soketekster.entries()];
+  const resultat: { soketekst: string; adresse: AdresseTreff | null; feil: string | null }[] = [];
+
+  const arbeider = async () => {
+    for (;;) {
+      const neste = kø.shift();
+      if (!neste) return;
+      const [indeks, soketekst] = neste;
+
+      const bufret = mellomlager.get(soketekst);
+      if (bufret) {
+        resultat[indeks] = { soketekst, adresse: bufret, feil: null };
+        continue;
+      }
+
+      try {
+        const [adresse] = await sokAdresse(soketekst);
+        mellomlager.set(soketekst, adresse);
+        resultat[indeks] = { soketekst, adresse, feil: null };
+      } catch (feil) {
+        resultat[indeks] = {
+          soketekst,
+          adresse: null,
+          feil: feil instanceof Error ? feil.message : "Ukjent feil ved adresseoppslag.",
+        };
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(samtidige, soketekster.length) }, arbeider));
+  return resultat;
+}

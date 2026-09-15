@@ -9,22 +9,23 @@ import {
   TextField,
 } from "@purpurds/purpur";
 
-export type OppdragUtkast = {
-  soketekst: string;
+export type SkjemaUtkast = {
+  /** Én eller flere adresser – alle får samme ansvarlige, antall og notat. */
+  adresser: string[];
   ansvarlige: string[];
   antallKunder: number | null;
   notat: string;
 };
 
 type Props = {
-  onLagre: (utkast: OppdragUtkast) => Promise<boolean>;
+  onLagre: (utkast: SkjemaUtkast) => Promise<boolean>;
   laster: boolean;
   feilmelding: string | null;
   onLukkFeil: () => void;
 };
 
 const TOMT_SKJEMA = {
-  adresse: "",
+  adresser: "",
   ansvarlig: "",
   antallKunder: "",
   notat: "",
@@ -61,9 +62,13 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const adresse = felt.adresse.trim();
-    if (!adresse) {
-      setAdresseFeil("Skriv inn en adresse for oppdraget.");
+    const adresser = felt.adresser
+      .split("\n")
+      .map((linje) => linje.trim())
+      .filter((linje) => linje !== "");
+
+    if (adresser.length === 0) {
+      setAdresseFeil("Skriv inn minst én adresse.");
       return;
     }
     setAdresseFeil(undefined);
@@ -75,7 +80,7 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
 
     const antall = felt.antallKunder.trim();
     const lagret = await onLagre({
-      soketekst: adresse,
+      adresser,
       ansvarlige: alleAnsvarlige,
       antallKunder: antall === "" ? null : Number(antall),
       notat: felt.notat.trim(),
@@ -91,15 +96,14 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
         <Card.Content>
           <form onSubmit={submit} noValidate>
             <div className="stabel">
-              <TextField
-                id="adresse"
-                label="Adresse"
-                helperText="Norsk adresse, f.eks. «Storgata 1, Oslo». Slås opp hos Kartverket."
+              <TextArea
+                id="adresser"
+                label="Adresser"
+                helperText="Én adresse per linje. Flere linjer gir ett oppdrag per adresse, med samme ansvarlige, antall kunder og notat."
                 errorText={adresseFeil}
-                value={felt.adresse}
-                onChange={(event) => oppdaterFelt("adresse", event.target.value)}
-                required
-                hideRequiredAsterisk
+                rows={3}
+                value={felt.adresser}
+                onChange={(event) => oppdaterFelt("adresser", event.target.value)}
               />
 
               <div className="stabel">
@@ -166,17 +170,19 @@ export function OppdragSkjema({ onLagre, laster, feilmelding, onLukkFeil }: Prop
               {feilmelding && (
                 <Notification
                   status="error"
-                  heading="Fant ikke adressen"
+                  heading="Adressesøket"
                   onClose={onLukkFeil}
                   closeButtonAriaLabel="Lukk feilmelding"
                 >
-                  <Paragraph variant="paragraph-100">{feilmelding}</Paragraph>
+                  <Paragraph variant="paragraph-100" className="notat">
+                    {feilmelding}
+                  </Paragraph>
                 </Notification>
               )}
 
               <div className="rad">
                 <Button variant="primary" type="submit" loading={laster}>
-                  Legg oppdrag på kartet
+                  Legg på kartet
                 </Button>
                 <Button variant="text" type="button" onClick={tomSkjema} disabled={laster}>
                   Tøm / nytt oppdrag
