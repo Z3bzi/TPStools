@@ -6,6 +6,7 @@ import { ExcelOpplasting } from "./components/ExcelOpplasting";
 import { OppdragSkjema, type SkjemaUtkast } from "./components/OppdragSkjema";
 import { OppdragsListe } from "./components/OppdragsListe";
 import { sokAdresser } from "./lib/geonorge";
+import { hentKjoretider } from "./lib/kjoretid";
 import { lesLeveranser, XlsxFeil } from "./lib/leveranse";
 import type { Oppdrag, OppdragUtkast } from "./types";
 
@@ -50,6 +51,7 @@ export function App() {
         id: crypto.randomUUID(),
         adresse: resultat.adresse,
         opprettet: new Date().toISOString(),
+        kjoretid: null,
       });
     });
 
@@ -59,8 +61,29 @@ export function App() {
       // kontoret og alle oppdrag, slik at begge deler er synlig.
       if (nye.length === 1) setAktivtOppdragId(nye[0].id);
       visAlle();
+      // Ruting skal ikke holde igjen markørene: oppdragene legges ut med én
+      // gang, og kjøretiden fylles inn i kortene og boblene når svaret kommer.
+      void beregnKjoretider(nye);
     }
     return { lagtTil: nye.length, feilet };
+  };
+
+  /**
+   * Henter kjøretid for nye oppdrag i én forespørsel. Oppdrag som er fjernet
+   * i mellomtiden faller bort av seg selv, siden lista slås opp på id.
+   */
+  const beregnKjoretider = async (nye: Oppdrag[]) => {
+    // hentKjoretider faller tilbake på luftlinje-anslag om ruting feiler, og
+    // kaster bare hvis oppslaget avbrytes – det gjør vi ikke her.
+    const kjoretider = await hentKjoretider(nye.map((o) => o.adresse));
+    const perId = new Map(nye.map((o, indeks) => [o.id, kjoretider[indeks]]));
+
+    setOppdrag((forrige) =>
+      forrige.map((o) => {
+        const kjoretid = perId.get(o.id);
+        return kjoretid ? { ...o, kjoretid } : o;
+      }),
+    );
   };
 
   const lagreFraSkjema = async (skjema: SkjemaUtkast) => {
@@ -140,8 +163,8 @@ export function App() {
           Briefingkart
         </Heading>
         <Paragraph variant="paragraph-100">
-          Telia Personlig Service Crew – oppdrag med adresse, ansvarlige, antall kunder og notat,
-          klart til oppstartsmøtet.
+          Telia Personlig Service Crew – oppdrag med adresse, ansvarlige, antall kunder, notat og
+          kjøretid fra kontoret, klart til oppstartsmøtet.
         </Paragraph>
       </header>
 

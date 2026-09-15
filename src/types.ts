@@ -27,6 +27,16 @@ export type Kommentar = {
   tekst: string;
 };
 
+/** Estimert kjøring fra kontoret til et oppdrag. */
+export type Kjoretid = {
+  /** Kjøretid i sekunder. */
+  sekunder: number;
+  /** Kjørelengde i meter. Null når ruting ikke oppga lengde. */
+  meter: number | null;
+  /** `vei` = rutet på ekte veinett, `luftlinje` = grovt anslag når ruting feiler. */
+  kilde: "vei" | "luftlinje";
+};
+
 /** Et oppdrag slik det vises som markør på kartet. */
 export type Oppdrag = {
   id: string;
@@ -42,6 +52,8 @@ export type Oppdrag = {
   dato: string | null;
   utstyr: Utstyr | null;
   kommentarer: Kommentar[];
+  /** Kjøretid fra kontoret. `null` mens ruting pågår. */
+  kjoretid: Kjoretid | null;
 };
 
 /** Et oppdrag før adressen er slått opp hos Kartverket. */

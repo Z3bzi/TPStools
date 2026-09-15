@@ -3,6 +3,7 @@ import { Badge, ColorDot, Paragraph } from "@purpurds/purpur";
 import { formaterAdresse } from "../lib/geonorge";
 import { summerUtstyr } from "../lib/leveranse";
 import { UTSTYR_ETIKETT, UTSTYR_FARGE, type Oppdrag } from "../types";
+import { Kjoretidsbadge } from "./Kjoretidsbadge";
 
 /** Innholdet i markørboblen – det crewet leser i oppstartsmøtet. */
 export function Briefing({ oppdrag }: { oppdrag: Oppdrag }) {
@@ -26,6 +27,13 @@ export function Briefing({ oppdrag }: { oppdrag: Oppdrag }) {
       <Felt tittel="Antall kunder">
         {oppdrag.antallKunder === null ? "Ikke satt" : String(oppdrag.antallKunder)}
       </Felt>
+
+      <div>
+        <Paragraph variant="additional-100-bold">Kjøretid fra kontoret</Paragraph>
+        <div className="rad">
+          <Kjoretidsbadge kjoretid={oppdrag.kjoretid} />
+        </div>
+      </div>
 
       {utstyr.length > 0 && (
         <div>

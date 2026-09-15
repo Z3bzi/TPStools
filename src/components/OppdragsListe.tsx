@@ -3,6 +3,7 @@ import { Badge, Button, Card, ColorDot, Heading, Paragraph } from "@purpurds/pur
 import { formaterAdresse } from "../lib/geonorge";
 import { summerUtstyr } from "../lib/leveranse";
 import { UTSTYR_ETIKETT, UTSTYR_FARGE, type Oppdrag } from "../types";
+import { Kjoretidsbadge } from "./Kjoretidsbadge";
 
 type Props = {
   oppdrag: Oppdrag[];
@@ -77,6 +78,7 @@ export function OppdragsListe({
                     >
                       {o.antallKunder === null ? "Antall kunder ikke satt" : `${o.antallKunder} kunder`}
                     </Badge>
+                    <Kjoretidsbadge kjoretid={o.kjoretid} medKontor />
                   </div>
 
                   <Paragraph variant="paragraph-100">
