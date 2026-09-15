@@ -1,6 +1,13 @@
+import { KONTOR } from "./kontor";
 import type { Kjoretid, Koordinat } from "../types";
 
-const OSRM_URL = "https://router.project-osrm.org/route/v1/driving";
+const OSRM_URL = "https://router.project-osrm.org/table/v1/driving";
+
+/**
+ * Adresser per tabellkall. OSRMs demoserver tar maks 100 punkter i slengen, og
+ * kortere kall gir svar på lista før hele leveransen er rutet.
+ */
+const MAKS_PER_KALL = 24;
 
 /** Veien er lengre enn luftlinja. Faktoren brukes kun i fallback-anslaget. */
 const OMVEISFAKTOR = 1.35;
@@ -15,63 +22,96 @@ const SNITTFART_KMT: { opptilKm: number; fart: number }[] = [
 ];
 const JORDRADIUS_M = 6_371_000;
 
-type OsrmRute = {
-  /** Kjøretid i sekunder. */
-  duration?: number;
-  /** Kjørelengde i meter. */
-  distance?: number;
-};
-
-type OsrmRespons = {
+type OsrmTabell = {
   code?: string;
-  routes?: OsrmRute[];
+  /** Én rad per kilde; her bare kontoret. Sekunder til hvert mål. */
+  durations?: (number | null)[][];
+  /** Samme form som durations, i meter. Demoserveren kan utelate den. */
+  distances?: (number | null)[][];
 };
 
 /**
- * Estimert kjøretid mellom to punkter.
+ * Estimert kjøretid fra kontoret til hvert av målene, i samme rekkefølge.
  *
  * Primærkilden er OSRMs åpne demo-API, som ruter på ekte veinett uten
- * API-nøkkel – samme prinsipp som adresseoppslaget hos Kartverket. Svarer den
- * ikke, faller vi tilbake på et anslag regnet fra luftlinje. Resultatet er
- * merket med `kilde`, slik at UI-et kan si fra hvilket av tallene det viser.
+ * API-nøkkel – samme prinsipp som adresseoppslaget hos Kartverket. Tabell-
+ * tjenesten gir alle adressene i én forespørsel, slik at en importert
+ * leveranseliste ikke blir til like mange kall som den har rader.
  *
- * Kaster bare når `signal` avbryter oppslaget; ellers gir den alltid et svar.
+ * Svarer ikke tjenesten, faller hvert mål tilbake på et anslag regnet fra
+ * luftlinje. Resultatet er merket med `kilde`, så UI-et kan si fra hvilket av
+ * tallene det viser.
+ *
+ * Kaster bare når `signal` avbryter oppslaget; ellers gir den alltid svar.
  */
-export async function hentKjoretid(
-  fra: Koordinat,
-  til: Koordinat,
+export async function hentKjoretider(
+  mal: Koordinat[],
   signal?: AbortSignal,
-): Promise<Kjoretid> {
-  try {
-    const rute = await hentOsrmRute(fra, til, signal);
-    if (rute) {
-      return { sekunder: rute.duration, meter: rute.distance, kilde: "vei" };
+): Promise<Kjoretid[]> {
+  const fra = KONTOR.posisjon;
+  const kjoretider: Kjoretid[] = [];
+
+  // Bitene tas etter tur, ikke parallelt: demoserveren er en delt ressurs, og
+  // lista fylles inn ovenfra uansett.
+  for (let start = 0; start < mal.length; start += MAKS_PER_KALL) {
+    const bit = mal.slice(start, start + MAKS_PER_KALL);
+
+    let rutet: Kjoretid[] | null = null;
+    try {
+      rutet = await hentOsrmTabell(fra, bit, signal);
+    } catch (feil) {
+      if (feil instanceof DOMException && feil.name === "AbortError") throw feil;
+      // Alt annet – nett, CORS, ugyldig JSON – havner i anslaget under.
     }
-  } catch (feil) {
-    if (feil instanceof DOMException && feil.name === "AbortError") throw feil;
-    // Alt annet – nett, CORS, ugyldig JSON – havner i anslaget under.
+
+    kjoretider.push(...(rutet ?? bit.map((punkt) => anslaFraLuftlinje(fra, punkt))));
   }
 
-  return anslaFraLuftlinje(fra, til);
+  return kjoretider;
 }
 
-async function hentOsrmRute(
+async function hentOsrmTabell(
   fra: Koordinat,
-  til: Koordinat,
+  mal: Koordinat[],
   signal?: AbortSignal,
-): Promise<{ duration: number; distance: number } | null> {
+): Promise<Kjoretid[] | null> {
   // OSRM tar koordinatene som lon,lat – motsatt rekkefølge av Leaflet.
-  const punkter = `${fra.lon},${fra.lat};${til.lon},${til.lat}`;
-  const respons = await fetch(`${OSRM_URL}/${punkter}?overview=false`, { signal });
+  const punkter = [fra, ...mal].map((p) => `${p.lon},${p.lat}`).join(";");
+  const params = new URLSearchParams({
+    // Kontoret er eneste kilde: én rad ut, ikke en full matrise.
+    sources: "0",
+    annotations: "duration,distance",
+  });
+
+  const respons = await fetch(`${OSRM_URL}/${punkter}?${params}`, { signal });
   if (!respons.ok) return null;
 
-  const data = (await respons.json()) as OsrmRespons;
+  const data = (await respons.json()) as OsrmTabell;
   if (data.code !== "Ok") return null;
 
-  const [rute] = data.routes ?? [];
-  if (typeof rute?.duration !== "number" || typeof rute.distance !== "number") return null;
+  // Første kolonne er kontoret til seg selv, så målene starter på indeks 1.
+  const sekunder = data.durations?.[0]?.slice(1);
+  const meter = data.distances?.[0]?.slice(1);
+  if (!sekunder || sekunder.length !== mal.length) return null;
 
-  return { duration: rute.duration, distance: rute.distance };
+  const kjoretider: Kjoretid[] = [];
+  for (const [indeks, tid] of sekunder.entries()) {
+    // Et enkelt mål uten rute (øy, adresse langt fra vei) skal ikke felle
+    // resten av biten – det får anslaget sitt i stedet.
+    if (typeof tid !== "number") {
+      kjoretider.push(anslaFraLuftlinje(fra, mal[indeks]));
+      continue;
+    }
+
+    const avstand = meter?.[indeks];
+    kjoretider.push({
+      sekunder: tid,
+      meter: typeof avstand === "number" ? avstand : null,
+      kilde: "vei",
+    });
+  }
+
+  return kjoretider;
 }
 
 /** Grovt anslag når ruting ikke er tilgjengelig: luftlinje × omvei ÷ snittfart. */

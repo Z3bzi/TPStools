@@ -4,16 +4,16 @@ import L, { type Marker as LeafletMarker } from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { Badge, Heading, Paragraph } from "@purpurds/purpur";
+import kontorIkonSvg from "@purpurds/purpur/icon/svg/connected-building.svg?raw";
+import { Paragraph } from "@purpurds/purpur";
 
-import { formaterAdresse } from "../lib/geonorge";
-import { STARTPUNKT } from "../lib/startpunkt";
+import { Briefing } from "./Briefing";
+import { KONTOR, useKontorPosisjon } from "../lib/kontor";
 import type { Oppdrag } from "../types";
-import { Kjoretidsbadge } from "./Kjoretidsbadge";
 
 // Leaflet slår opp markørbildene via relative stier som ikke overlever
 // bundling – derfor pekes de eksplisitt på filene Vite har hashet.
-const ikon = L.icon({
+const oppdragsIkon = L.icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIcon2x,
   shadowUrl: markerShadow,
@@ -23,30 +23,29 @@ const ikon = L.icon({
   shadowSize: [41, 41],
 });
 
-// Oppmøtestedet skal skille seg tydelig fra oppdragene. En divIcon holder det
-// til CSS og Purpur-tokens, uten et ekstra bilde i builden.
-const startIkon = L.divIcon({
-  className: "startmarkor",
-  html: '<span class="startmarkor__prikk"></span>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  popupAnchor: [0, -9],
+const kontorIkon = L.divIcon({
+  html: `<span class="kontor-markor">${kontorIkonSvg}</span>`,
+  className: "",
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+  popupAnchor: [0, -18],
 });
 
-/** Hele Norge, brukt som utgangspunkt før første oppdrag er lagt inn. */
-const NORGE_SENTER: [number, number] = [64.5, 13.5];
-const NORGE_ZOOM = 4;
 const OPPDRAG_ZOOM = 16;
+const KONTOR_ZOOM = 12;
 
 type Props = {
   oppdrag: Oppdrag[];
   aktivtOppdragId: string | null;
   /** Endres hver gang et oppdrag velges, også når det samme velges på nytt. */
   fokusTeller: number;
+  /** Endres når kartet skal ramme inn kontoret og alle oppdrag. */
+  visAlleTeller: number;
 };
 
-export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller }: Props) {
+export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller, visAlleTeller }: Props) {
   const markorer = useRef(new Map<string, LeafletMarker>());
+  const kontor = useKontorPosisjon();
   const aktivt = oppdrag.find((o) => o.id === aktivtOppdragId) ?? null;
 
   useEffect(() => {
@@ -57,29 +56,28 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller }: Props) {
   }, [aktivtOppdragId, fokusTeller, oppdrag]);
 
   return (
-    <MapContainer center={NORGE_SENTER} zoom={NORGE_ZOOM} scrollWheelZoom>
+    <MapContainer center={[kontor.lat, kontor.lon]} zoom={KONTOR_ZOOM} scrollWheelZoom>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bidragsytere'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
       />
 
-      <KartFokus
-        lat={aktivt?.adresse.lat ?? null}
-        lon={aktivt?.adresse.lon ?? null}
-        zoom={OPPDRAG_ZOOM}
+      <KartKamera
+        fokus={aktivt ? [aktivt.adresse.lat, aktivt.adresse.lon] : null}
         fokusTeller={fokusTeller}
+        punkter={[
+          [kontor.lat, kontor.lon],
+          ...oppdrag.map((o): [number, number] => [o.adresse.lat, o.adresse.lon]),
+        ]}
+        visAlleTeller={visAlleTeller}
       />
 
-      <Marker position={[STARTPUNKT.lat, STARTPUNKT.lon]} icon={startIkon}>
+      <Marker position={[kontor.lat, kontor.lon]} icon={kontorIkon} zIndexOffset={-100}>
         <Popup>
           <div className="stabel">
-            <Heading tag="h3" variant="title-100">
-              {STARTPUNKT.navn}
-            </Heading>
-            <Paragraph variant="paragraph-100">
-              Oppmøtested. Kjøretiden på hvert oppdrag er regnet herfra.
-            </Paragraph>
+            <Paragraph variant="paragraph-100-bold">{KONTOR.navn}</Paragraph>
+            <Paragraph variant="paragraph-100">{KONTOR.adresse}</Paragraph>
           </div>
         </Popup>
       </Marker>
@@ -88,7 +86,7 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller }: Props) {
         <Marker
           key={o.id}
           position={[o.adresse.lat, o.adresse.lon]}
-          icon={ikon}
+          icon={oppdragsIkon}
           ref={(markor) => {
             if (markor) markorer.current.set(o.id, markor);
             else markorer.current.delete(o.id);
@@ -103,65 +101,43 @@ export function Briefingkart({ oppdrag, aktivtOppdragId, fokusTeller }: Props) {
   );
 }
 
-/** Flytter kartet til det aktive oppdraget. */
-function KartFokus({
-  lat,
-  lon,
-  zoom,
+/**
+ * Styrer kameraet. Begge effektene kjører bare når sin egen teller økes, og
+ * leser posisjonene fra refs. Da flytter ikke kartet seg av seg selv når et
+ * oppdrag legges til eller fjernes – bare når noen ber om det.
+ */
+function KartKamera({
+  fokus,
   fokusTeller,
+  punkter,
+  visAlleTeller,
 }: {
-  lat: number | null;
-  lon: number | null;
-  zoom: number;
+  fokus: [number, number] | null;
   fokusTeller: number;
+  punkter: [number, number][];
+  visAlleTeller: number;
 }) {
   const kart = useMap();
+  const sisteFokus = useRef(fokus);
+  const sistePunkter = useRef(punkter);
 
-  // Koordinatene sendes som tall, ikke som array, slik at effekten bare kjører
-  // når posisjonen faktisk endrer seg – eller når fokusTeller økes.
   useEffect(() => {
-    if (lat === null || lon === null) return;
-    kart.flyTo([lat, lon], Math.max(kart.getZoom(), zoom), { duration: 0.8 });
-  }, [kart, lat, lon, zoom, fokusTeller]);
+    sisteFokus.current = fokus;
+    sistePunkter.current = punkter;
+  }, [fokus, punkter]);
+
+  useEffect(() => {
+    if (fokusTeller === 0 || !sisteFokus.current) return;
+    kart.flyTo(sisteFokus.current, Math.max(kart.getZoom(), OPPDRAG_ZOOM), { duration: 0.8 });
+  }, [kart, fokusTeller]);
+
+  useEffect(() => {
+    if (visAlleTeller === 0 || sistePunkter.current.length < 2) return;
+    kart.fitBounds(L.latLngBounds(sistePunkter.current), {
+      padding: [48, 48],
+      maxZoom: OPPDRAG_ZOOM,
+    });
+  }, [kart, visAlleTeller]);
 
   return null;
-}
-
-/** Innholdet i markørboblen – det crewet leser i oppstartsmøtet. */
-export function Briefing({ oppdrag }: { oppdrag: Oppdrag }) {
-  return (
-    <div className="stabel">
-      <Heading tag="h3" variant="title-100">
-        {formaterAdresse(oppdrag.adresse)}
-      </Heading>
-
-      <div>
-        <Paragraph variant="additional-100-bold">Ansvarlige</Paragraph>
-        <Paragraph variant="paragraph-100">
-          {oppdrag.ansvarlige.length > 0 ? oppdrag.ansvarlige.join(", ") : "Ikke satt"}
-        </Paragraph>
-      </div>
-
-      <div className="rad">
-        <Paragraph variant="additional-100-bold">Antall kunder</Paragraph>
-        <Badge variant={oppdrag.antallKunder === null ? "neutral" : "information"} showIcon={false}>
-          {oppdrag.antallKunder === null ? "Ikke satt" : String(oppdrag.antallKunder)}
-        </Badge>
-      </div>
-
-      <div>
-        <Paragraph variant="additional-100-bold">Kjøretid fra {STARTPUNKT.navn}</Paragraph>
-        <div className="rad">
-          <Kjoretidsbadge kjoretid={oppdrag.kjoretid} />
-        </div>
-      </div>
-
-      <div>
-        <Paragraph variant="additional-100-bold">Notat</Paragraph>
-        <Paragraph variant="paragraph-100">
-          {oppdrag.notat !== "" ? oppdrag.notat : "Ingen notater lagt inn."}
-        </Paragraph>
-      </div>
-    </div>
-  );
 }

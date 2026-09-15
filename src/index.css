@@ -122,13 +122,46 @@ body {
   width: 16rem !important;
 }
 
-/* Oppmøtestedet: en tydelig prikk som ikke forveksles med oppdragsmarkørene. */
-.startmarkor__prikk {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: var(--purpur-border-radius-full);
-  background-color: var(--purpur-color-background-interactive-primary);
-  border: var(--purpur-border-width-sm) solid var(--purpur-color-background-primary);
-  box-shadow: var(--purpur-shadow-sm);
+/* Kontormarkøren: lilla boble med kontorikon, tegnet som divIcon i Leaflet. */
+.kontor-markor {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--purpur-color-purple-550);
+  color: var(--purpur-color-functional-white);
+  border: 2px solid var(--purpur-color-functional-white);
+  box-shadow: var(--purpur-shadow-md);
+}
+
+.kontor-markor svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* Lange briefinger skal ikke sprenge kartflaten. */
+.leaflet-popup-content .briefing {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.notat {
+  white-space: pre-line;
+}
+
+.utstyr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-50);
+}
+
+.utstyr__rad {
+  display: flex;
+  align-items: center;
+  gap: var(--purpur-spacing-100);
+}
+
+.skjult-fil {
+  display: none;
 }

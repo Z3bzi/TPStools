@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Heading, Paragraph } from "@purpurds/purpur";
 
 import { Briefingkart } from "./components/Briefingkart";
-import { OppdragSkjema, type OppdragUtkast } from "./components/OppdragSkjema";
+import { ExcelOpplasting } from "./components/ExcelOpplasting";
+import { OppdragSkjema, type SkjemaUtkast } from "./components/OppdragSkjema";
 import { OppdragsListe } from "./components/OppdragsListe";
-import { GeokodingFeil, sokAdresse } from "./lib/geonorge";
-import { hentKjoretid } from "./lib/kjoretid";
-import { STARTPUNKT } from "./lib/startpunkt";
-import type { Oppdrag } from "./types";
+import { sokAdresser } from "./lib/geonorge";
+import { hentKjoretider } from "./lib/kjoretid";
+import { lesLeveranser, XlsxFeil } from "./lib/leveranse";
+import type { Oppdrag, OppdragUtkast } from "./types";
 
 export function App() {
   const [oppdrag, setOppdrag] = useState<Oppdrag[]>([]);
@@ -15,55 +16,133 @@ export function App() {
   // Økes hver gang et oppdrag velges, slik at kartet flyr dit igjen selv om
   // det allerede var det aktive oppdraget.
   const [fokusTeller, setFokusTeller] = useState(0);
-  const [laster, setLaster] = useState(false);
-  const [feilmelding, setFeilmelding] = useState<string | null>(null);
+  const [visAlleTeller, setVisAlleTeller] = useState(0);
+
+  const [lasterSkjema, setLasterSkjema] = useState(false);
+  const [skjemaFeil, setSkjemaFeil] = useState<string | null>(null);
+  const [lasterFil, setLasterFil] = useState(false);
+  const [importResultat, setImportResultat] = useState<string | null>(null);
+  const [importFeil, setImportFeil] = useState<string | null>(null);
 
   const velgOppdrag = (id: string) => {
     setAktivtOppdragId(id);
     setFokusTeller((forrige) => forrige + 1);
   };
 
-  const beregnKjoretid = async (nytt: Oppdrag) => {
-    // hentKjoretid faller tilbake på et luftlinje-anslag om ruting feiler, og
-    // kaster bare hvis oppslaget avbrytes – det gjør vi ikke her.
-    const kjoretid = await hentKjoretid(STARTPUNKT, nytt.adresse);
-    setOppdrag((forrige) => forrige.map((o) => (o.id === nytt.id ? { ...o, kjoretid } : o)));
-  };
+  const visAlle = () => setVisAlleTeller((forrige) => forrige + 1);
 
-  const leggTilOppdrag = async (utkast: OppdragUtkast) => {
-    setLaster(true);
-    setFeilmelding(null);
+  /**
+   * Slår opp adressene og legger til de som ble funnet. Utkast som ikke lar seg
+   * geokode rapporteres tilbake, slik at ingen rad forsvinner i stillhet.
+   */
+  const leggTil = async (utkast: OppdragUtkast[]): Promise<{ lagtTil: number; feilet: string[] }> => {
+    const treff = await sokAdresser(utkast.map((u) => u.soketekst));
 
-    try {
-      // Første treff er Kartverkets beste match. Hele den bekreftede adressen
-      // vises i lista og popup-en, slik at feiltreff er lett å oppdage.
-      const [adresse] = await sokAdresse(utkast.soketekst);
-      const nytt: Oppdrag = {
+    const nye: Oppdrag[] = [];
+    const feilet: string[] = [];
+
+    treff.forEach((resultat, indeks) => {
+      if (!resultat.adresse) {
+        feilet.push(resultat.soketekst);
+        return;
+      }
+      nye.push({
+        ...utkast[indeks],
         id: crypto.randomUUID(),
-        soketekst: utkast.soketekst,
-        adresse,
-        ansvarlige: utkast.ansvarlige,
-        antallKunder: utkast.antallKunder,
-        notat: utkast.notat,
+        adresse: resultat.adresse,
         opprettet: new Date().toISOString(),
         kjoretid: null,
-      };
+      });
+    });
 
-      setOppdrag((forrige) => [...forrige, nytt]);
-      velgOppdrag(nytt.id);
-      // Ruting skal ikke holde igjen markøren: oppdraget legges ut med én gang,
-      // og kjøretiden fylles inn i kortet og boblen når svaret kommer.
-      void beregnKjoretid(nytt);
-      return true;
-    } catch (feil) {
-      setFeilmelding(
-        feil instanceof GeokodingFeil
-          ? feil.message
-          : "Noe gikk galt under adresseoppslaget. Prøv igjen.",
+    if (nye.length > 0) {
+      setOppdrag((forrige) => [...forrige, ...nye]);
+      // Ett nytt oppdrag: åpne briefingen med en gang. Kameraet rammer inn
+      // kontoret og alle oppdrag, slik at begge deler er synlig.
+      if (nye.length === 1) setAktivtOppdragId(nye[0].id);
+      visAlle();
+      // Ruting skal ikke holde igjen markørene: oppdragene legges ut med én
+      // gang, og kjøretiden fylles inn i kortene og boblene når svaret kommer.
+      void beregnKjoretider(nye);
+    }
+    return { lagtTil: nye.length, feilet };
+  };
+
+  /**
+   * Henter kjøretid for nye oppdrag i én forespørsel. Oppdrag som er fjernet
+   * i mellomtiden faller bort av seg selv, siden lista slås opp på id.
+   */
+  const beregnKjoretider = async (nye: Oppdrag[]) => {
+    // hentKjoretider faller tilbake på luftlinje-anslag om ruting feiler, og
+    // kaster bare hvis oppslaget avbrytes – det gjør vi ikke her.
+    const kjoretider = await hentKjoretider(nye.map((o) => o.adresse));
+    const perId = new Map(nye.map((o, indeks) => [o.id, kjoretider[indeks]]));
+
+    setOppdrag((forrige) =>
+      forrige.map((o) => {
+        const kjoretid = perId.get(o.id);
+        return kjoretid ? { ...o, kjoretid } : o;
+      }),
+    );
+  };
+
+  const lagreFraSkjema = async (skjema: SkjemaUtkast) => {
+    setLasterSkjema(true);
+    setSkjemaFeil(null);
+
+    try {
+      const { lagtTil, feilet } = await leggTil(
+        skjema.adresser.map((adresse) => ({
+          soketekst: adresse,
+          ansvarlige: skjema.ansvarlige,
+          antallKunder: skjema.antallKunder,
+          notat: skjema.notat,
+          dato: null,
+          utstyr: null,
+          kommentarer: [],
+        })),
       );
-      return false;
+
+      if (feilet.length > 0) {
+        setSkjemaFeil(
+          `Fant ingen treff på:\n${feilet.map((a) => `• ${a}`).join("\n")}\n` +
+            "Prøv med gatenavn, nummer og poststed.",
+        );
+      }
+
+      if (lagtTil === 0) return false;
+      return feilet.length === 0;
     } finally {
-      setLaster(false);
+      setLasterSkjema(false);
+    }
+  };
+
+  const importerFil = async (fil: File) => {
+    setLasterFil(true);
+    setImportFeil(null);
+    setImportResultat(null);
+
+    try {
+      const utkast = lesLeveranser(new Uint8Array(await fil.arrayBuffer()));
+      const { lagtTil, feilet } = await leggTil(utkast);
+
+      const dager = new Set(utkast.map((u) => u.dato).filter(Boolean));
+      const kunder = utkast.reduce((sum, u) => sum + (u.antallKunder ?? 0), 0);
+
+      setImportResultat(
+        `La til ${lagtTil} adresser fra ${dager.size} dagsark, med til sammen ${kunder} kunder.` +
+          (feilet.length > 0
+            ? `\nFant ingen treff på:\n${feilet.map((a) => `• ${a}`).join("\n")}`
+            : ""),
+      );
+    } catch (feil) {
+      setImportFeil(
+        feil instanceof XlsxFeil
+          ? feil.message
+          : "Noe gikk galt under lesing av filen. Sjekk at det er et GDA-uttrekk i .xlsx-format.",
+      );
+    } finally {
+      setLasterFil(false);
     }
   };
 
@@ -84,23 +163,34 @@ export function App() {
           Briefingkart
         </Heading>
         <Paragraph variant="paragraph-100">
-          Telia Personlig Service Crew – oppdrag med adresse, ansvarlige, antall kunder og notat,
-          klart til oppstartsmøtet. Kjøretiden regnes fra {STARTPUNKT.navn}.
+          Telia Personlig Service Crew – oppdrag med adresse, ansvarlige, antall kunder, notat og
+          kjøretid fra kontoret, klart til oppstartsmøtet.
         </Paragraph>
       </header>
 
       <main className="app__innhold">
         <div className="app__panel">
+          <ExcelOpplasting
+            onFil={importerFil}
+            laster={lasterFil}
+            resultat={importResultat}
+            feilmelding={importFeil}
+            onLukkMelding={() => {
+              setImportResultat(null);
+              setImportFeil(null);
+            }}
+          />
           <OppdragSkjema
-            onLagre={leggTilOppdrag}
-            laster={laster}
-            feilmelding={feilmelding}
-            onLukkFeil={() => setFeilmelding(null)}
+            onLagre={lagreFraSkjema}
+            laster={lasterSkjema}
+            feilmelding={skjemaFeil}
+            onLukkFeil={() => setSkjemaFeil(null)}
           />
           <OppdragsListe
             oppdrag={oppdrag}
             aktivtOppdragId={aktivtOppdragId}
             onVis={velgOppdrag}
+            onVisAlle={visAlle}
             onFjern={fjernOppdrag}
             onFjernAlle={fjernAlle}
           />
@@ -111,6 +201,7 @@ export function App() {
             oppdrag={oppdrag}
             aktivtOppdragId={aktivtOppdragId}
             fokusTeller={fokusTeller}
+            visAlleTeller={visAlleTeller}
           />
         </section>
       </main>

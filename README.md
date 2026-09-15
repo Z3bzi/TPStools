@@ -2,21 +2,39 @@
 
 Verktøy som viser ett eller flere oppdrag på kart, med en markørboble som
 inneholder informasjonen crewet trenger i oppstartsmøtet: ansvarlige, antall
-kunder, notat og estimert kjøretid fra Økern Portal.
+kunder, notat og estimert kjøretid fra kontoret.
 
 Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
 ## Slik virker det
 
-1. Fyll ut skjemaet: adresse, ansvarlige, antall kunder og notat.
-2. Ved lagring slås adressen opp hos Kartverkets åpne adresse-API.
-3. Oppdraget settes som markør, og kartet flyr til stedet med briefingen åpen.
-4. Kjøretiden fra Økern Portal hentes i bakgrunnen og fylles inn i kortet og
-   boblen når svaret kommer – markøren venter ikke på ruting.
-5. Flere oppdrag kan ligge på kartet samtidig, hver med sin egen boble.
+Kontoret på Økern Portal ligger alltid på kartet som en lilla boble, så det er
+lett å se oppdragene i forhold til det. Når noe legges til, rammes kartet inn
+slik at både kontoret og oppdragene er synlige, og hvert oppdrag får estimert
+kjøretid fra kontoret i kortet og i boblen.
+
+**Importer en leveranseliste (.xlsx)**
+
+1. Velg GDA-uttrekket. Hvert dagsark leses som én leveransedag.
+2. Radene grupperes per adresse, og antall kunder telles per oppgang.
+3. Bakgrunnsfargen på navnecellen leses som utstyr:
+   gul = ruter og TV-boks, blå = kun ruter, oransje = kun TV-boks.
+   Andre farger telles som «annen merking» framfor å bli gjettet på.
+4. Ansvarlige hentes fra navnekolonnene i overskriftsraden, og fellesinfo
+   (leveransetype, plattform, TV/BB, kontaktperson, parkering, prosjektleder)
+   fra informasjonsfanen. Radkommentarer følger med per leilighet.
+5. Alle adressene geokodes, og hver oppgang blir én markør.
+
+**Eller legg inn adresser manuelt**
+
+1. Skriv én adresse per linje – flere linjer gir ett oppdrag per adresse, med
+   samme ansvarlige, antall kunder og notat.
+2. Ved lagring slås adressene opp hos Kartverkets åpne adresse-API.
+3. Oppdragene settes som markører med briefingen i boblen.
 
 Oppdragene lever i nettleserens minne så lenge fanen er åpen, og forsvinner ved
-refresh. Det er bevisst for et briefingverktøy – ingen kundedata lagres noe sted.
+refresh. Det er bevisst for et briefingverktøy – ingen kundedata lagres noe sted,
+og Excel-filen forlater aldri nettleseren.
 
 ## Teknologi
 
@@ -26,13 +44,43 @@ refresh. Det er bevisst for et briefingverktøy – ingen kundedata lagres noe s
 | Design          | [`@purpurds/purpur`](https://www.npmjs.com/package/@purpurds/purpur) – Telias designsystem |
 | Kart            | react-leaflet + Leaflet, tiles fra OpenStreetMap                       |
 | Geokoding       | Kartverket: `https://ws.geonorge.no/adresser/v1/sok`                   |
-| Kjøretid        | OSRM: `https://router.project-osrm.org/route/v1/driving`               |
+| Kjøretid        | OSRM: `https://router.project-osrm.org/table/v1/driving`               |
+| Excel           | Egen minimal .xlsx-leser på `fflate`                                   |
 | Hosting         | Statisk build på GitHub Pages                                          |
 
 Alt UI utenom selve kartflaten er bygget med Purpur-komponenter (`Button`,
 `Card`, `TextField`, `TextArea`, `DismissableChipGroup`, `Notification`,
-`Badge`, `Heading`, `Paragraph`). Egen CSS brukes kun til sidelayout og
-kartflaten, og henter farger, avstander og radier fra Purpurs designtokens.
+`Badge`, `ColorDot`, `Heading`, `Paragraph`). Egen CSS brukes kun til
+sidelayout, kartflaten og kontormarkøren, og henter farger, avstander og radier
+fra Purpurs designtokens. Kontorikonet er Purpurs `connected-building`.
+
+### Hvorfor en egen Excel-leser
+
+Utstyrsmerkingen ligger i *bakgrunnsfargen* på cellene, ikke i en kolonne.
+SheetJS' åpne utgave leser ikke cellestiler, og ExcelJS drar med seg
+Node-avhengigheter som ikke hører hjemme i en ren klient-app. `src/lib/xlsx.ts`
+pakker derfor ut arbeidsboka med `fflate` og leser `styles.xml` direkte – rundt
+150 linjer, og full kontroll på fargene.
+
+### Kjøretid fra kontoret
+
+Kjøretiden hentes fra OSRMs åpne demo-API, som ruter på ekte veinett uten
+API-nøkkel og kalles direkte fra nettleseren – samme prinsipp som
+Kartverket-oppslaget. Appen bruker *tabell*-tjenesten med kontoret som eneste
+kilde, så en importert leveranseliste på 60 adresser blir tre forespørsler i
+stedet for seksti. Rutingen skjer i bakgrunnen: markørene legges ut med én gang,
+og tallet fylles inn i kortene og boblene når svaret kommer.
+
+Svarer ikke tjenesten, regner appen et grovt anslag fra luftlinje ganget med en
+omveisfaktor, med lavere snittfart på korte turer enn på lange. Anslaget er
+merket «anslag» i badgen og vises nøytralt i stedet for blått, slik at ingen
+forveksler det med en rutet kjøretid. Samme fallback brukes for enkeltadresser
+uten rute, f.eks. langt fra vei.
+
+To ting å være klar over: tallet er fri flyt uten trafikk- eller føredata, og
+demoserveren til OSRM er ment for lett bruk. Skal verktøyet brukes av mange crew
+samtidig, bør ruting flyttes til en egen OSRM-instans eller en tjeneste med
+avtale.
 
 ### Merk om `--purpur-rescale`
 
@@ -41,24 +89,6 @@ Purpurs avstands- og typografitokens er definert som
 Uten `--purpur-rescale` blir alle disse `calc()`-ene ugyldige, og UI-et mister
 avstander og skriftstørrelser. Appen setter den derfor til `1` i
 `src/index.css`.
-
-## Kjøretid fra Økern Portal
-
-Crewet kjører alltid ut fra Økern Portal, så oppmøtestedet er en konstant i
-`src/lib/startpunkt.ts` – ikke et felt i skjemaet. Skal det byttes, er det den
-ene filen som redigeres; både kartmarkøren og alle kjøretidene følger med.
-
-Selve kjøretiden hentes fra OSRMs åpne demo-API, som ruter på ekte veinett uten
-API-nøkkel og kalles direkte fra nettleseren – samme prinsipp som
-Kartverket-oppslaget. Svarer ikke tjenesten, regner appen et grovt anslag fra
-luftlinje ganget med en omveisfaktor, med lavere snittfart på korte turer enn på
-lange. Anslaget er merket «anslag» i badgen og vises nøytralt i stedet for blått,
-slik at ingen forveksler det med en rutet kjøretid.
-
-To ting å være klar over: tallet er fri flyt uten trafikk- eller føredata, og
-demoserveren til OSRM er ment for lett bruk. Skal verktøyet brukes av mange crew
-samtidig, bør ruting flyttes til en egen OSRM-instans eller en tjeneste med
-avtale.
 
 ## Kom i gang
 
@@ -76,12 +106,16 @@ npm run lint     # oxlint
 | ---------------------------------- | --------------------------------------------------- |
 | `src/App.tsx`                      | Tilstand for oppdrag, geokoding og valgt oppdrag     |
 | `src/components/OppdragSkjema.tsx` | Skjemaet, bygget med Purpur-komponenter              |
-| `src/components/Briefingkart.tsx`  | Leaflet-kartet, markører og briefing-popup           |
+| `src/components/ExcelOpplasting.tsx` | Import av leveranseliste, med fargeforklaring      |
+| `src/components/Briefingkart.tsx`  | Leaflet-kartet, kontormarkør og briefing-popup       |
+| `src/components/Briefing.tsx`      | Innholdet i markørboblen                             |
 | `src/components/OppdragsListe.tsx` | Oppdragene som kort, med «Vis på kartet» og «Fjern»  |
 | `src/components/Kjoretidsbadge.tsx`| Kjøretiden som Purpur-badge, lik i lista og i boblen |
-| `src/lib/geonorge.ts`              | Adressesøk mot Kartverket                            |
+| `src/lib/xlsx.ts`                  | Minimal .xlsx-leser som også henter cellefarger      |
+| `src/lib/leveranse.ts`             | Tolker leveranselista til oppdrag per adresse        |
+| `src/lib/kontor.ts`                | Kontoret på Økern Portal                             |
 | `src/lib/kjoretid.ts`              | Ruting mot OSRM, med luftlinje-anslag som fallback   |
-| `src/lib/startpunkt.ts`            | Oppmøtestedet crewet kjører ut fra                   |
+| `src/lib/geonorge.ts`              | Adressesøk mot Kartverket                            |
 | `src/index.css`                    | Sidelayout og kartflate, bygget på Purpur-tokens     |
 
 ## Deploy
@@ -93,11 +127,24 @@ Settings → Pages.
 Builden bruker `base: "./"` i `vite.config.ts`, slik at samme artefakt virker
 både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
 
+## Kjente begrensninger
+
+- Kontorets posisjon slås opp på Ulvenveien 75 ved oppstart, med en fast
+  koordinat som reserve hvis Kartverket ikke svarer. Reservekoordinaten er
+  omtrentlig og kan justeres i `src/lib/kontor.ts`.
+- Samme adresse på to dagsark gir to markører oppå hverandre. Datoen står i
+  boblen, men markørene ligger på samme punkt.
+- Ved tvetydig adresse brukes Kartverkets beste treff. Hele den bekreftede
+  adressen vises, slik at feiltreff er synlige.
+- Kjøretiden regnes fra reservekoordinaten i `src/lib/kontor.ts`, ikke fra
+  Kartverket-treffet kartet bruker. Forskjellen er noen titalls meter, og OSRM
+  fester uansett punktet til nærmeste vei.
+
 ## Videre arbeid
 
 - Adresseforslag mens man skriver (Purpur `Autocomplete` mot samme Kartverk-API).
-- Valg mellom flere adressetreff når søket er tvetydig – i dag brukes Kartverkets
-  beste treff, og hele den bekreftede adressen vises slik at feiltreff synes.
+- Filtrering på dagsark, så én dag kan vises om gangen.
+- Spre markører som ligger på samme punkt, f.eks. med klynging.
 - Deling av en briefing via lenke, f.eks. oppdragene kodet i URL-en.
 - Sortering av oppdragslista etter kjøretid, og samlet kjøretid for en runde
   der crewet tar flere adresser etter hverandre.

@@ -1,18 +1,17 @@
 import { Badge } from "@purpurds/purpur";
 
 import { formaterAvstand, formaterVarighet } from "../lib/kjoretid";
-import { STARTPUNKT } from "../lib/startpunkt";
 import type { Kjoretid } from "../types";
 
 type Props = {
   kjoretid: Kjoretid | null;
-  /** Tar med «fra Økern Portal» i teksten, for steder uten egen overskrift. */
-  medStartpunkt?: boolean;
+  /** Tar med «fra kontoret» i teksten, for steder uten egen overskrift. */
+  medKontor?: boolean;
 };
 
-/** Kjøretiden fra oppmøtestedet, lik i oppdragslista og i kartboblen. */
-export function Kjoretidsbadge({ kjoretid, medStartpunkt = false }: Props) {
-  const fra = medStartpunkt ? ` fra ${STARTPUNKT.navn}` : "";
+/** Kjøretiden fra kontoret, lik i oppdragslista og i kartboblen. */
+export function Kjoretidsbadge({ kjoretid, medKontor = false }: Props) {
+  const fra = medKontor ? " fra kontoret" : "";
 
   if (kjoretid === null) {
     return (
@@ -26,8 +25,8 @@ export function Kjoretidsbadge({ kjoretid, medStartpunkt = false }: Props) {
   // aldri se ut som det samme tallet.
   const anslag = kjoretid.kilde === "luftlinje";
   const deler = [
-    `Ca. ${formaterVarighet(kjoretid.sekunder)}`,
-    `${formaterAvstand(kjoretid.meter)}${fra}`,
+    `Ca. ${formaterVarighet(kjoretid.sekunder)}${kjoretid.meter === null ? fra : ""}`,
+    ...(kjoretid.meter !== null ? [`${formaterAvstand(kjoretid.meter)}${fra}`] : []),
     ...(anslag ? ["anslag"] : []),
   ];
 
