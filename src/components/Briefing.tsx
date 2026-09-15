@@ -11,6 +11,16 @@ export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: St
 
   return (
     <div className="briefing stabel">
+      {leveranse.toppinfo.length > 0 && (
+        <div className="toppinfo">
+          {leveranse.toppinfo.map((verdi, indeks) => (
+            <Paragraph variant="paragraph-100-bold" key={`${verdi}-${indeks}`}>
+              {verdi}
+            </Paragraph>
+          ))}
+        </div>
+      )}
+
       <div className="rad">
         <Paragraph variant="paragraph-100-bold">{formaterAdresse(stopp.adresse)}</Paragraph>
         {leveranse.dato && (

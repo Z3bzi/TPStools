@@ -75,6 +75,7 @@ export function App() {
       nye.push({
         id: crypto.randomUUID(),
         dato: leveranse.dato,
+        toppinfo: leveranse.toppinfo,
         ansvarlige: leveranse.ansvarlige,
         notat: leveranse.notat,
         opprettet: new Date().toISOString(),
@@ -129,6 +130,7 @@ export function App() {
       const { nye, feilet } = await leggTil([
         {
           dato: null,
+          toppinfo: [],
           ansvarlige: skjema.ansvarlige,
           notat: skjema.notat,
           stopp: skjema.adresser.map((adresse) => ({

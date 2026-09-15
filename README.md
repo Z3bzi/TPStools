@@ -23,12 +23,14 @@ til én enkelt dag.
 3. Bakgrunnsfargen på navnecellen leses som utstyr:
    gul = ruter og TV-boks, blå = kun ruter, oransje = kun TV-boks.
    Andre farger telles som «annen merking» framfor å bli gjettet på.
-4. Ansvarlige hentes fra navnekolonnene i overskriftsraden, og fellesinfo
+4. B1, C1 og H1 i dagsarket leses som toppinfo og står øverst i boblen, før
+   adressen. Tomme celler faller bort.
+5. Ansvarlige hentes fra navnekolonnene i overskriftsraden, og fellesinfo
    (leveransetype, plattform, TV/BB, kontaktperson, parkering, prosjektleder)
    fra informasjonsfanen. Radkommentarer følger med per leilighet.
-5. En dialog spør hvem som skal ut på hver leveranse, med ett felt per dagsark
+6. En dialog spør hvem som skal ut på hver leveranse, med ett felt per dagsark
    forhåndsutfylt med navnene fra arket. Navn skrives skilt med komma.
-6. Først når crewet er bekreftet, geokodes adressene og leveransene legges på
+7. Først når crewet er bekreftet, geokodes adressene og leveransene legges på
    kartet. Avbryter du dialogen, er ingenting slått opp.
 
 **Eller legg inn adresser manuelt**

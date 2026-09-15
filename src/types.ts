@@ -60,6 +60,8 @@ export type Leveranse = {
   id: string;
   /** Dagsarkets navn, f.eks. "15.09". Null når leveransen er lagt inn manuelt. */
   dato: string | null;
+  /** Toppinfoen fra dagsarket (B1, C1, H1) – står øverst i briefingen. */
+  toppinfo: string[];
   ansvarlige: string[];
   notat: string;
   opprettet: string;
@@ -77,6 +79,7 @@ export type StoppUtkast = {
 /** En leveranse slik den kommer ut av lista, før adressene er slått opp. */
 export type LeveranseUtkast = {
   dato: string | null;
+  toppinfo: string[];
   /** Navnene som sto i arket. Kan overstyres i dialogen før import. */
   ansvarlige: string[];
   notat: string;

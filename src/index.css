@@ -190,3 +190,14 @@ body {
 .stoppliste__rad--aktiv {
   border-left-color: var(--purpur-color-background-interactive-primary);
 }
+
+/* Toppinfoen fra dagsarket. Skal leses før alt annet i boblen. */
+.toppinfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-50);
+  padding: var(--purpur-spacing-100) var(--purpur-spacing-200);
+  border-radius: var(--purpur-border-radius-sm);
+  background-color: var(--purpur-color-background-secondary);
+  border-left: var(--purpur-border-width-md) solid var(--purpur-color-background-interactive-primary);
+}

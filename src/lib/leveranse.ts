@@ -145,7 +145,24 @@ function lesDagsark(ark: Ark, info: Map<string, string>): LeveranseUtkast | null
   const stopp = [...perAdresse.values()];
   if (stopp.length === 0) return null;
 
-  return { dato: ark.navn, ansvarlige, notat: byggNotat(info), stopp };
+  return {
+    dato: ark.navn,
+    toppinfo: lesToppinfo(ark),
+    ansvarlige,
+    notat: byggNotat(info),
+    stopp,
+  };
+}
+
+/**
+ * B1, C1 og H1 i dagsarket er det crewet må vite først – de står derfor øverst
+ * i briefingen, før adressen. Tomme celler faller bort.
+ */
+function lesToppinfo(ark: Ark): string[] {
+  const rad = ark.rader[0] ?? [];
+  return [1, 2, 7]
+    .map((kolonne) => tekst(rad[kolonne]))
+    .filter((verdi) => verdi !== "" && verdi !== "-");
 }
 
 /** Informasjonsfanen er en ren nøkkel/verdi-liste med felles info for leveransen. */
