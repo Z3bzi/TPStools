@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, Heading, Paragraph } from "@purpurds/purpur";
+import { Button, Heading } from "@purpurds/purpur";
 
-import { Briefingkart, type Innramming } from "./components/Briefingkart";
+import { Briefingkart, type Boblekommando, type Innramming } from "./components/Briefingkart";
 import { Dagslagring } from "./components/Dagslagring";
 import { ExcelOpplasting } from "./components/ExcelOpplasting";
 import { LeveranseDialog, type VentendeImport } from "./components/LeveranseDialog";
@@ -45,6 +45,13 @@ export function App() {
   // det allerede var det aktive stoppet.
   const [fokusTeller, setFokusTeller] = useState(0);
   const [innramming, setInnramming] = useState<Innramming>({ leveranseId: null, teller: 0 });
+  // Boblene på kartet står åpne til de lukkes, og styres herfra så lista kan
+  // åpne en hel dag om gangen.
+  const [bobler, setBobler] = useState<Boblekommando>({
+    handling: "lukk",
+    leveranseId: null,
+    teller: 0,
+  });
 
   // Leveransene fra en importert fil venter her mens dialogen spør hvem som
   // skal ut på dem. Adressene slås ikke opp før det er avklart.
@@ -77,6 +84,13 @@ export function App() {
 
   const rammInn = (leveranseId: string | null) =>
     setInnramming((forrige) => ({ leveranseId, teller: forrige.teller + 1 }));
+
+  /** Åpner boblene til alle adressene i én leveranse på én gang. */
+  const visBobler = (leveranseId: string) =>
+    setBobler((forrige) => ({ handling: "apne", leveranseId, teller: forrige.teller + 1 }));
+
+  const lukkBobler = () =>
+    setBobler((forrige) => ({ handling: "lukk", leveranseId: null, teller: forrige.teller + 1 }));
 
   /**
    * Slår opp adressene og legger til leveransene som ble funnet. Adresser som
@@ -303,26 +317,10 @@ export function App() {
 
   return (
     <div className={fremvisning ? "app app--fremvisning" : "app"}>
-      <header className="app__topp">
-        <div className="rad rad--mellomrom">
-          <Heading tag="h1" variant={fremvisning ? "title-200" : "title-300"}>
-            Briefingkart
-          </Heading>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => setFremvisning((forrige) => !forrige)}
-          >
-            {fremvisning ? "Avslutt fremvisning" : "Fremvisningsmodus"}
-          </Button>
-        </div>
-        {!fremvisning && (
-          <Paragraph variant="paragraph-100">
-            Telia Personlig Service Crew – én leveranse per dag, med alle adressene på kartet,
-            ansvarlige, antall kunder, notat og kjøretid fra kontoret.
-          </Paragraph>
-        )}
-      </header>
+      {/* Overskriften står bare for skjermlesere – kartet er det som skal fylle skjermen. */}
+      <Heading tag="h1" variant="title-100" className="kun-skjermleser">
+        Briefingkart – Telia Personlig Service Crew
+      </Heading>
 
       <main className="app__innhold">
         <div className="app__panel">
@@ -367,6 +365,8 @@ export function App() {
             fremvisning={fremvisning}
             onVisStopp={velgStopp}
             onVisLeveranse={rammInn}
+            onVisBobler={visBobler}
+            onLukkBobler={lukkBobler}
             onVisAlle={() => rammInn(null)}
             onFjern={fjernLeveranse}
             onFjernAlle={fjernAlle}
@@ -374,11 +374,27 @@ export function App() {
         </div>
 
         <section className="app__kart" aria-label="Kart med leveranser">
+          {/*
+            Modusknappen ligger over kartet i stedet for i en topprad: i
+            fremvisning skal ingenting annet enn kartet og leveransene ta plass,
+            og knappen må være der uansett om det ligger leveranser inne.
+          */}
+          <div className="app__modus">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setFremvisning((forrige) => !forrige)}
+            >
+              {fremvisning ? "Avslutt fremvisning" : "Fremvisningsmodus"}
+            </Button>
+          </div>
+
           <Briefingkart
             leveranser={leveranser}
             aktivtStoppId={aktivtStoppId}
             fokusTeller={fokusTeller}
             innramming={innramming}
+            bobler={bobler}
           />
         </section>
       </main>
