@@ -39,10 +39,16 @@ body {
   min-height: 100%;
 }
 
-.app__topp {
-  padding: var(--purpur-spacing-300) var(--purpur-spacing-400);
-  background-color: var(--purpur-color-background-secondary);
-  border-bottom: var(--purpur-border-width-xs) solid var(--purpur-color-border-weak);
+/* Bare for skjermlesere: siden har ingen synlig topptekst. */
+.kun-skjermleser {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .app__innhold {
@@ -63,6 +69,7 @@ body {
 .app__kart {
   position: sticky;
   top: var(--purpur-spacing-400);
+  isolation: isolate;
   height: calc(100vh - var(--purpur-spacing-1000));
   min-height: 24rem;
   overflow: hidden;
@@ -80,14 +87,10 @@ body {
   overflow: hidden;
 }
 
-.app--fremvisning .app__topp {
-  padding: var(--purpur-spacing-200) var(--purpur-spacing-400);
-}
-
 .app--fremvisning .app__innhold {
   align-items: stretch;
   min-height: 0;
-  padding: var(--purpur-spacing-200) var(--purpur-spacing-400) var(--purpur-spacing-400);
+  padding: var(--purpur-spacing-200);
 }
 
 .app--fremvisning .app__panel {
@@ -96,7 +99,8 @@ body {
 }
 
 .app--fremvisning .app__kart {
-  position: static;
+  position: relative;
+  top: auto;
   height: 100%;
 }
 
@@ -104,6 +108,23 @@ body {
 .app--fremvisning .stoppliste {
   max-height: none;
   overflow-y: visible;
+}
+
+/*
+ * Modusknappen ligger over kartet. Leaflets egne kontroller bruker z-index
+ * opp til 1000, så knappen legges over dem.
+ */
+.app__modus {
+  position: absolute;
+  z-index: 1001;
+  top: var(--purpur-spacing-200);
+  right: var(--purpur-spacing-200);
+}
+
+/* Knappen skal leses mot kartflaten, ikke gli inn i den. */
+.app__modus button {
+  background-color: var(--purpur-color-background-primary);
+  box-shadow: var(--purpur-shadow-md);
 }
 
 @media (max-width: 900px) {
@@ -204,9 +225,44 @@ body {
 }
 
 /* Lange briefinger skal ikke sprenge kartflaten. */
-.leaflet-popup-content .briefing {
+.leaflet-popup-content .briefing__innhold {
   max-height: 22rem;
   overflow-y: auto;
+}
+
+/*
+ * Draghåndtaket øverst i boblen. Flere bobler kan stå åpne samtidig, og
+ * håndtaket er det som lar dem trekkes fra hverandre så alt blir synlig.
+ * touch-action holder nettleseren fra å rulle siden i stedet for å flytte
+ * boblen på berøringsskjerm.
+ */
+.briefing__handtak {
+  display: grid;
+  place-items: center;
+  /* Plass til Leaflets lukkekryss øverst til høyre. */
+  padding: var(--purpur-spacing-50) var(--purpur-spacing-400) var(--purpur-spacing-100);
+  margin: calc(-1 * var(--purpur-spacing-200)) calc(-1 * var(--purpur-spacing-200))
+    var(--purpur-spacing-100);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.briefing__handtak--drar {
+  cursor: grabbing;
+}
+
+/* Samme grep som Purpurs drawer-håndtak, med tokens derfra. */
+.briefing__grep {
+  display: block;
+  width: var(--purpur-spacing-600);
+  height: var(--purpur-spacing-50);
+  border-radius: var(--purpur-border-radius-full);
+  background-color: var(--purpur-color-border-weak);
+}
+
+.briefing__handtak:hover .briefing__grep {
+  background-color: var(--purpur-color-background-interactive-primary);
 }
 
 .notat {

@@ -20,6 +20,9 @@ type Props = {
   fremvisning?: boolean;
   onVisStopp: (id: string) => void;
   onVisLeveranse: (id: string) => void;
+  /** Åpner infoboblene til alle adressene i leveransen. */
+  onVisBobler: (id: string) => void;
+  onLukkBobler: () => void;
   onVisAlle: () => void;
   onFjern: (id: string) => void;
   onFjernAlle: () => void;
@@ -31,6 +34,8 @@ export function LeveranseListe({
   fremvisning = false,
   onVisStopp,
   onVisLeveranse,
+  onVisBobler,
+  onLukkBobler,
   onVisAlle,
   onFjern,
   onFjernAlle,
@@ -66,6 +71,9 @@ export function LeveranseListe({
         <div className="rad">
           <Button variant="text" onClick={onVisAlle}>
             Vis alle
+          </Button>
+          <Button variant="text" onClick={onLukkBobler}>
+            Lukk boblene
           </Button>
           {!fremvisning && (
             <Button variant="text" onClick={onFjernAlle}>
@@ -157,6 +165,9 @@ export function LeveranseListe({
                   <div className="rad">
                     <Button variant="secondary" onClick={() => onVisLeveranse(leveranse.id)}>
                       Vis leveransen
+                    </Button>
+                    <Button variant="text" onClick={() => onVisBobler(leveranse.id)}>
+                      Vis boblene
                     </Button>
                     {!fremvisning && (
                       <Button variant="text" onClick={() => onFjern(leveranse.id)}>

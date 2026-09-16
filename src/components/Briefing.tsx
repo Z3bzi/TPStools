@@ -11,73 +11,88 @@ export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: St
   const utstyr = summerUtstyr(stopp.utstyr);
 
   return (
-    <div className="briefing stabel">
-      <Toppinfo linjer={leveranse.toppinfo} />
-
-      <div className="rad">
-        {/* Samme farge som markøren boblen henger på – knytter boblen til dagen. */}
-        <ColorDot color={leveranse.farge} size="sm" withBorder />
-        <Paragraph variant="paragraph-100-bold">{formaterAdresse(stopp.adresse)}</Paragraph>
-        {leveranse.dato && (
-          <Badge variant="special" showIcon={false}>
-            {leveranse.dato}
-          </Badge>
-        )}
+    <div className="briefing">
+      {/*
+        Draghåndtaket. Flere bobler kan stå åpne samtidig, og da må de kunne
+        flyttes fra hverandre – ellers dekker de hverandre og adressene de hører
+        til. Selve flyttingen ligger i Briefingkart, som kjenner Leaflet-boblen
+        håndtaket sitter i.
+      */}
+      <div
+        className="briefing__handtak"
+        title="Dra for å flytte boblen. Dobbeltklikk setter den tilbake på markøren."
+      >
+        <span className="briefing__grep" aria-hidden="true" />
       </div>
 
-      <Felt tittel="Ansvarlige">
-        {leveranse.ansvarlige.length > 0 ? leveranse.ansvarlige.join(", ") : "Ikke satt"}
-      </Felt>
+      <div className="briefing__innhold stabel">
+        <Toppinfo linjer={leveranse.toppinfo} />
 
-      <Felt tittel="Antall kunder">
-        {stopp.antallKunder === null ? "Ikke satt" : String(stopp.antallKunder)}
-      </Felt>
-
-      <div>
-        <Paragraph variant="additional-100-bold">Kjøretid fra kontoret</Paragraph>
         <div className="rad">
-          <Kjoretidsbadge kjoretid={stopp.kjoretid} />
+          {/* Samme farge som markøren boblen henger på – knytter boblen til dagen. */}
+          <ColorDot color={leveranse.farge} size="sm" withBorder />
+          <Paragraph variant="paragraph-100-bold">{formaterAdresse(stopp.adresse)}</Paragraph>
+          {leveranse.dato && (
+            <Badge variant="special" showIcon={false}>
+              {leveranse.dato}
+            </Badge>
+          )}
         </div>
-      </div>
 
-      {utstyr.length > 0 && (
+        <Felt tittel="Ansvarlige">
+          {leveranse.ansvarlige.length > 0 ? leveranse.ansvarlige.join(", ") : "Ikke satt"}
+        </Felt>
+
+        <Felt tittel="Antall kunder">
+          {stopp.antallKunder === null ? "Ikke satt" : String(stopp.antallKunder)}
+        </Felt>
+
         <div>
-          <Paragraph variant="additional-100-bold">Utstyr</Paragraph>
-          <div className="utstyr">
-            {utstyr.map(([kategori, antall]) => (
-              <div className="utstyr__rad" key={kategori}>
-                <ColorDot color={UTSTYR_FARGE[kategori]} size="sm" withBorder />
-                <Paragraph variant="paragraph-100">
-                  {UTSTYR_ETIKETT[kategori]}: {antall}
-                </Paragraph>
-              </div>
-            ))}
+          <Paragraph variant="additional-100-bold">Kjøretid fra kontoret</Paragraph>
+          <div className="rad">
+            <Kjoretidsbadge kjoretid={stopp.kjoretid} />
           </div>
         </div>
-      )}
 
-      {leveranse.notat !== "" && (
-        <div>
-          <Paragraph variant="additional-100-bold">Notat</Paragraph>
-          <Paragraph variant="paragraph-100" className="notat">
-            {leveranse.notat}
-          </Paragraph>
-        </div>
-      )}
+        {utstyr.length > 0 && (
+          <div>
+            <Paragraph variant="additional-100-bold">Utstyr</Paragraph>
+            <div className="utstyr">
+              {utstyr.map(([kategori, antall]) => (
+                <div className="utstyr__rad" key={kategori}>
+                  <ColorDot color={UTSTYR_FARGE[kategori]} size="sm" withBorder />
+                  <Paragraph variant="paragraph-100">
+                    {UTSTYR_ETIKETT[kategori]}: {antall}
+                  </Paragraph>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {stopp.kommentarer.length > 0 && (
-        <div>
-          <Paragraph variant="additional-100-bold">
-            Kommentarer ({stopp.kommentarer.length})
-          </Paragraph>
-          {stopp.kommentarer.map((kommentar, indeks) => (
-            <Paragraph variant="paragraph-100" key={`${kommentar.leilighet}-${indeks}`}>
-              {kommentar.leilighet ? `${kommentar.leilighet}: ` : ""}
-              {kommentar.tekst}
+        {leveranse.notat !== "" && (
+          <div>
+            <Paragraph variant="additional-100-bold">Notat</Paragraph>
+            <Paragraph variant="paragraph-100" className="notat">
+              {leveranse.notat}
             </Paragraph>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+
+        {stopp.kommentarer.length > 0 && (
+          <div>
+            <Paragraph variant="additional-100-bold">
+              Kommentarer ({stopp.kommentarer.length})
+            </Paragraph>
+            {stopp.kommentarer.map((kommentar, indeks) => (
+              <Paragraph variant="paragraph-100" key={`${kommentar.leilighet}-${indeks}`}>
+                {kommentar.leilighet ? `${kommentar.leilighet}: ` : ""}
+                {kommentar.tekst}
+              </Paragraph>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

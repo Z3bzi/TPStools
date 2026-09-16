@@ -5,9 +5,10 @@ med alle adressene sine som markører – hver med en boble som inneholder det
 crewet trenger i oppstartsmøtet: ansvarlige, antall kunder, utstyr, notat og
 estimert kjøretid fra kontoret.
 
-Hver leveranse har sin egen markørfarge, dagen kan lagres som fil og åpnes
-igjen rett før møtet, og fremvisningsmodus rydder bort alt annet enn kartet og
-leveransene når briefingen holdes.
+Hver leveranse har sin egen markørfarge, flere infobobler kan stå åpne samtidig
+og trekkes dit de skal stå, dagen kan lagres som fil og åpnes igjen rett før
+møtet, og fremvisningsmodus rydder bort alt annet enn kartet og leveransene når
+briefingen holdes.
 
 Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
@@ -50,6 +51,20 @@ sammen når flere dager ligger på kartet samtidig.
 3. Ved lagring slås adressene opp hos Kartverkets åpne adresse-API, og hver
    adresse settes som markør med briefingen i boblen.
 
+**Flere bobler oppe samtidig**
+
+1. Boblene lukker ikke hverandre. Klikk på markørene, eller «Vis boblene» på et
+   leveransekort, så står hele dagen framme på én gang. «Lukk boblene» tømmer
+   kartet for bobler igjen.
+2. Hver boble har et håndtak øverst. Dra i det, så flyttes boblen dit den skal
+   stå – da kan flere bobler leses samtidig uten å dekke hverandre.
+3. En flyttet boble får en stiplet linje tilbake til markøren sin, så det er
+   tydelig hvilken adresse briefingen gjelder. Dobbeltklikk på håndtaket setter
+   boblen tilbake på markøren.
+4. Boblene holder seg innenfor kartflaten. En adresse helt ute ved kanten får
+   boblen sin plassert innenfor i stedet for utenfor skjermen, og kartet står i
+   ro når bobler åpnes – det er boblene som flytter seg, ikke kartet.
+
 **Lagre dagen og åpne den igjen**
 
 1. «Last ned dagen» lagrer alle leveransene på kartet som en `.json`-fil på din
@@ -66,10 +81,14 @@ sammen når flere dager ligger på kartet samtidig.
 
 **Fremvisningsmodus**
 
-Knappen øverst til høyre bytter til fremvisning: da vises bare kartet og
+Knappen oppe til høyre på kartet bytter til fremvisning: da vises bare kartet og
 leveransene. Import, skjema og lagring – og knappene som fjerner noe – er borte,
 kartet fyller høyden og siden slutter å rulle. Det er modusen selve briefingen
-holdes i. «Avslutt fremvisning» eller Escape går tilbake til planlegging.
+holdes i, med boblene åpne og plassert der de skal stå. «Avslutt fremvisning»
+eller Escape går tilbake til planlegging.
+
+Appen har ingen topprad: kartet skal fylle skjermen, og den eneste knappen som
+ligger over kartflaten er modusknappen.
 
 Leveransene lever i nettleserens minne så lenge fanen er åpen, og forsvinner ved
 refresh – med mindre dagen er lastet ned som fil først. Excel-filen forlater
@@ -88,6 +107,12 @@ leilighetsnumre og kommentarer – og skal behandles deretter.
 | Kjøretid        | OSRM: `https://router.project-osrm.org/table/v1/driving`               |
 | Excel           | Egen minimal .xlsx-leser på `fflate`                                   |
 | Hosting         | Statisk build på GitHub Pages                                          |
+
+Infoboblene er Leaflets egne popups, satt opp med `autoClose: false` og
+`closeOnClick: false` slik at flere kan stå åpne samtidig. Flyttingen endrer
+Leaflets `offset` på boblen i stedet for å flytte elementet selv – da blir
+boblen hengende ved markøren sin gjennom panorering og zoom, og havner der den
+ble sluppet i forhold til adressen.
 
 Alt UI utenom selve kartflaten er bygget med Purpur-komponenter (`Button`,
 `Card`, `TextField`, `TextArea`, `DismissableChipGroup`, `Modal`,
@@ -157,7 +182,7 @@ npm run lint     # oxlint
 | `src/components/LeveranseSkjema.tsx` | Skjemaet, bygget med Purpur-komponenter            |
 | `src/components/ExcelOpplasting.tsx` | Import av leveranseliste, med fargeforklaring      |
 | `src/components/LeveranseDialog.tsx` | Dialogen som spør hvem som skal ut på leveransene  |
-| `src/components/Briefingkart.tsx`  | Leaflet-kartet, kontormarkør og briefing-popup       |
+| `src/components/Briefingkart.tsx`  | Leaflet-kartet, markører, og bobler som kan flyttes  |
 | `src/components/Briefing.tsx`      | Innholdet i markørboblen                             |
 | `src/components/LeveranseListe.tsx` | Leveransene som kort, med adressene sine            |
 | `src/components/Dagslagring.tsx`   | Nedlasting og åpning av dagen som `.json`-fil        |
@@ -190,7 +215,12 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
   koordinaten der.
 - Samme adresse på to dagsark gir to markører oppå hverandre – én per
   leveranse. De har hver sin farge og datoen står i boblen, men markørene ligger
-  fortsatt på samme punkt, så den øverste skjuler den andre.
+  fortsatt på samme punkt, så den øverste skjuler den andre. Boblene kan
+  derimot trekkes fra hverandre.
+- En boble som er dratt til side, blir liggende der til den lukkes eller
+  tilbakestilles. Plasseringen lagres ikke i dagsfila.
+- Modusknappen ligger over kartet og kan dekke en boble som er plassert helt
+  oppe i høyre hjørne.
 - Paletten har åtte farger. Ligger det flere leveranser enn det på kartet
   samtidig, går fargene rundt på nytt og to dager deler farge.
 - En dagsfil er knyttet til formatet appen har nå. Filer fra en nyere versjon av
