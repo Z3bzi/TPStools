@@ -6,9 +6,9 @@ crewet trenger i oppstartsmøtet: ansvarlige, antall kunder, utstyr, notat og
 estimert kjøretid fra kontoret.
 
 Hver leveranse har sin egen markørfarge, flere infobobler kan stå åpne samtidig
-og trekkes dit de skal stå, dagen kan lagres som fil og åpnes igjen rett før
-møtet, og fremvisningsmodus rydder bort alt annet enn kartet og leveransene når
-briefingen holdes.
+og trekkes og strekkes dit de skal stå, dagen kan lagres som fil og åpnes igjen
+rett før møtet, og fremvisningsmodus rydder bort alt annet enn kartet og
+leveransene når briefingen holdes.
 
 Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
@@ -58,12 +58,18 @@ sammen når flere dager ligger på kartet samtidig.
    kartet for bobler igjen.
 2. Hver boble har et håndtak øverst. Dra i det, så flyttes boblen dit den skal
    stå – da kan flere bobler leses samtidig uten å dekke hverandre.
-3. En flyttet boble får en stiplet linje tilbake til markøren sin, så det er
+3. Kantene og hjørnene på boblen endrer størrelsen. Dra dem ut, så er det plass
+   til hele briefingen uten å rulle – notatet og kommentarene er ofte lengre enn
+   standardboblen. Kanten du drar i er den som flytter seg; motsatt side står i
+   ro. Dobbeltklikk på en kant setter størrelsen tilbake.
+4. En flyttet boble får en stiplet linje tilbake til markøren sin, så det er
    tydelig hvilken adresse briefingen gjelder. Dobbeltklikk på håndtaket setter
    boblen tilbake på markøren.
-4. Boblene holder seg innenfor kartflaten. En adresse helt ute ved kanten får
+5. Boblene holder seg innenfor kartflaten. En adresse helt ute ved kanten får
    boblen sin plassert innenfor i stedet for utenfor skjermen, og kartet står i
    ro når bobler åpnes – det er boblene som flytter seg, ikke kartet.
+6. Plassering og størrelse følger boblen til den lukkes og åpnes igjen, så en
+   briefing kan rigges ferdig før møtet starter.
 
 **Lagre dagen og åpne den igjen**
 
@@ -113,6 +119,13 @@ Infoboblene er Leaflets egne popups, satt opp med `autoClose: false` og
 Leaflets `offset` på boblen i stedet for å flytte elementet selv – da blir
 boblen hengende ved markøren sin gjennom panorering og zoom, og havner der den
 ble sluppet i forhold til adressen.
+
+Størrelsen settes som CSS-variabler på boblen (`--boble-bredde` og
+`--boble-hoyde`), fordi Leaflet skriver en målt bredde rett på elementet hver
+gang boblen tegnes om – variablene brukes i regler med `!important` og
+overlever det. Leaflet henger boblen opp i bunnen og midtstiller den over
+markøren, så forskyvningen justeres samtidig med størrelsen: da er det kanten
+man drar i som flytter seg, og ikke hele boblen.
 
 Alt UI utenom selve kartflaten er bygget med Purpur-komponenter (`Button`,
 `Card`, `TextField`, `TextArea`, `DismissableChipGroup`, `Modal`,
@@ -217,8 +230,8 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
   leveranse. De har hver sin farge og datoen står i boblen, men markørene ligger
   fortsatt på samme punkt, så den øverste skjuler den andre. Boblene kan
   derimot trekkes fra hverandre.
-- En boble som er dratt til side, blir liggende der til den lukkes eller
-  tilbakestilles. Plasseringen lagres ikke i dagsfila.
+- En boble som er dratt til side eller strukket ut, blir liggende slik til den
+  tilbakestilles. Plassering og størrelse lagres ikke i dagsfila.
 - Modusknappen ligger over kartet og kan dekke en boble som er plassert helt
   oppe i høyre hjørne.
 - Paletten har åtte farger. Ligger det flere leveranser enn det på kartet

@@ -65,6 +65,27 @@ const KONTOR_ZOOM = 12;
 const STANDARD_FORSKYVNING = L.point(0, 7);
 
 /**
+ * Kantene boblen kan endres i størrelse fra, med retningen hver av dem drar i.
+ * x/y = -1 er venstre og topp, 1 er høyre og bunn, 0 er aksen kanten ikke rører.
+ */
+const KANTER = [
+  { navn: "nord", x: 0, y: -1 },
+  { navn: "sor", x: 0, y: 1 },
+  { navn: "vest", x: -1, y: 0 },
+  { navn: "ost", x: 1, y: 0 },
+  { navn: "nordvest", x: -1, y: -1 },
+  { navn: "nordost", x: 1, y: -1 },
+  { navn: "sorvest", x: -1, y: 1 },
+  { navn: "sorost", x: 1, y: 1 },
+] as const;
+
+/** Grensene for hvor liten og stor en boble kan gjøres, i piksler. */
+const MIN_BREDDE = 180;
+const MIN_HOYDE = 80;
+/** Luft mot kartkanten, slik at boblen aldri fyller helt ut til den. */
+const KANTMARG = 16;
+
+/**
  * Åpning og lukking av bobler, bedt om utenfra. Som innrammingen styres den av
  * en teller, slik at samme handling kan bes om flere ganger på rad.
  */
@@ -316,9 +337,30 @@ function Bobleflytting() {
       oppdaterLinje(boble);
     };
 
+    /**
+     * Legger dragkanter rundt boblekortet. Leaflet bygger boblen sin én gang
+     * og gjenbruker elementet, så kantene legges på første gang den åpnes –
+     * og størrelsen crewet har satt blir stående også om boblen lukkes og
+     * åpnes igjen.
+     */
+    const leggPaKanter = (boble: LeafletPopup) => {
+      const kort = boble.getElement()?.querySelector(".leaflet-popup-content-wrapper");
+      if (!kort || kort.querySelector(".boble-kant")) return;
+
+      for (const kant of KANTER) {
+        const element = document.createElement("div");
+        element.className = `boble-kant boble-kant--${kant.navn}`;
+        element.dataset.kant = kant.navn;
+        element.title = "Dra for å endre størrelsen. Dobbeltklikk setter den tilbake.";
+        kort.appendChild(element);
+      }
+    };
+
     const paBobleApnet = (hendelse: L.PopupEvent) => {
       const element = hendelse.popup.getElement();
       if (!element) return;
+
+      leggPaKanter(hendelse.popup);
 
       // Innholdet portaleres inn av react-leaflet like etter at boblen åpnes,
       // og vokser igjen når kjøretiden kommer. Boblen måles derfor når den
@@ -328,6 +370,10 @@ function Bobleflytting() {
       });
       overvaker.observe(element);
       overvakere.set(hendelse.popup, overvaker);
+
+      // Boblen husker plasseringen sin når den lukkes og åpnes igjen, så linja
+      // tilbake til markøren må tegnes på nytt.
+      oppdaterLinje(hendelse.popup);
     };
 
     const paBobleLukket = (hendelse: L.PopupEvent) => {
@@ -366,6 +412,90 @@ function Bobleflytting() {
       return treff;
     };
 
+    const klem = (verdi: number, minst: number, mest: number) =>
+      Math.max(minst, Math.min(mest, verdi));
+
+    /**
+     * Endrer størrelsen på en boble ved å dra i en av kantene.
+     *
+     * Bredden settes på selve boblen og høyden på innholdsfeltet, begge som
+     * CSS-variabler – da overlever de at Leaflet regner om layouten sin.
+     * Leaflet henger boblen opp i bunnen og midtstiller den over markøren, så
+     * forskyvningen justeres samtidig: da er det kanten man drar i som
+     * flytter seg, og ikke hele boblen.
+     */
+    const startStorrelsesendring = (
+      boble: LeafletPopup,
+      kantElement: HTMLElement,
+      hendelse: PointerEvent,
+    ) => {
+      const element = boble.getElement();
+      const innholdsfelt = element?.querySelector<HTMLElement>(".leaflet-popup-content");
+      const innhold = element?.querySelector<HTMLElement>(".briefing__innhold");
+      const kant = KANTER.find((k) => k.navn === kantElement.dataset.kant);
+      if (!element || !innholdsfelt || !innhold || !kant) return;
+
+      hendelse.stopPropagation();
+      // Boblen står der crewet har satt den – den skal ikke flyttes av seg selv
+      // mens størrelsen endres.
+      brukerplassert.add(boble);
+
+      const kartflate = kart.getContainer().getBoundingClientRect();
+      const maksBredde = kartflate.width - 2 * KANTMARG;
+      const maksHoyde = kartflate.height - 2 * KANTMARG;
+
+      const start = L.point(hendelse.clientX, hendelse.clientY);
+      const startForskyvning = L.point(boble.options.offset ?? STANDARD_FORSKYVNING);
+      const startBredde = innholdsfelt.getBoundingClientRect().width;
+      const startHoyde = innhold.getBoundingClientRect().height;
+
+      kantElement.classList.add("boble-kant--drar");
+      kantElement.setPointerCapture(hendelse.pointerId);
+
+      const endre = (steg: PointerEvent) => {
+        let forskyvning = startForskyvning;
+
+        if (kant.x !== 0) {
+          const bredde = klem(
+            startBredde + kant.x * (steg.clientX - start.x),
+            MIN_BREDDE,
+            maksBredde,
+          );
+          element.style.setProperty("--boble-bredde", `${bredde}px`);
+          // Boblen er midtstilt over markøren, så halve breddeendringen må
+          // legges på forskyvningen for at motsatt kant skal stå i ro.
+          forskyvning = forskyvning.add(L.point((kant.x * (bredde - startBredde)) / 2, 0));
+        }
+
+        if (kant.y !== 0) {
+          const hoyde = klem(startHoyde + kant.y * (steg.clientY - start.y), MIN_HOYDE, maksHoyde);
+          element.style.setProperty("--boble-hoyde", `${hoyde}px`);
+          // Boblen vokser oppover fra bunnen. Dras nedre kant, må hele boblen
+          // like langt ned for at toppen skal bli stående.
+          if (kant.y === 1) forskyvning = forskyvning.add(L.point(0, hoyde - startHoyde));
+        }
+
+        boble.options.offset = forskyvning;
+        // update() måler boblen på nytt før den plasseres – setLatLng ville
+        // brukt den gamle bredden til å midtstille den.
+        boble.update();
+        holdInnenfor(boble);
+        oppdaterLinje(boble);
+      };
+
+      const slipp = () => {
+        kantElement.classList.remove("boble-kant--drar");
+        kantElement.releasePointerCapture(hendelse.pointerId);
+        kantElement.removeEventListener("pointermove", endre);
+        kantElement.removeEventListener("pointerup", slipp);
+        kantElement.removeEventListener("pointercancel", slipp);
+      };
+
+      kantElement.addEventListener("pointermove", endre);
+      kantElement.addEventListener("pointerup", slipp);
+      kantElement.addEventListener("pointercancel", slipp);
+    };
+
     const paPekerNed = (hendelse: PointerEvent) => {
       const mal = hendelse.target;
       if (!(mal instanceof HTMLElement)) return;
@@ -375,6 +505,12 @@ function Bobleflytting() {
 
       // Boblen det jobbes i skal ligge øverst, uansett hvor i den man tar tak.
       boble.bringToFront();
+
+      const kant = mal.closest(".boble-kant");
+      if (kant instanceof HTMLElement) {
+        startStorrelsesendring(boble, kant, hendelse);
+        return;
+      }
 
       const handtak = mal.closest(".briefing__handtak");
       if (!(handtak instanceof HTMLElement)) return;
@@ -418,13 +554,28 @@ function Bobleflytting() {
       handtak.addEventListener("pointercancel", slipp);
     };
 
-    /** Dobbeltklikk på håndtaket setter boblen tilbake på markøren sin. */
+    /**
+     * Dobbeltklikk setter boblen tilbake: på håndtaket til markøren sin, på en
+     * kant til standardstørrelsen.
+     */
     const paDobbeltklikk = (hendelse: MouseEvent) => {
       const mal = hendelse.target;
-      if (!(mal instanceof HTMLElement) || !mal.closest(".briefing__handtak")) return;
+      if (!(mal instanceof HTMLElement)) return;
 
       const boble = finnBoble(mal);
       if (!boble) return;
+
+      if (mal.closest(".boble-kant")) {
+        const element = boble.getElement();
+        element?.style.removeProperty("--boble-bredde");
+        element?.style.removeProperty("--boble-hoyde");
+        boble.update();
+        holdInnenfor(boble);
+        oppdaterLinje(boble);
+        return;
+      }
+
+      if (!mal.closest(".briefing__handtak")) return;
 
       brukerplassert.delete(boble);
       boble.options.offset = STANDARD_FORSKYVNING;
