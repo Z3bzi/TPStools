@@ -70,6 +70,42 @@ body {
   border: var(--purpur-border-width-xs) solid var(--purpur-color-border-weak);
 }
 
+/*
+ * Fremvisning: briefingen holdes på skjerm, og da skal kartet og leveransene
+ * fylle flaten. Siden slutter å rulle – panelet ruller for seg, så kartet blir
+ * stående mens crewet blar gjennom dagene.
+ */
+.app--fremvisning {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app--fremvisning .app__topp {
+  padding: var(--purpur-spacing-200) var(--purpur-spacing-400);
+}
+
+.app--fremvisning .app__innhold {
+  align-items: stretch;
+  min-height: 0;
+  padding: var(--purpur-spacing-200) var(--purpur-spacing-400) var(--purpur-spacing-400);
+}
+
+.app--fremvisning .app__panel {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.app--fremvisning .app__kart {
+  position: static;
+  height: 100%;
+}
+
+/* Hele høyden er tilgjengelig, så adressene trenger ikke sin egen rullefelt. */
+.app--fremvisning .stoppliste {
+  max-height: none;
+  overflow-y: visible;
+}
+
 @media (max-width: 900px) {
   .app__innhold {
     grid-template-columns: 1fr;
@@ -77,6 +113,20 @@ body {
 
   .app__kart {
     position: static;
+    height: 60vh;
+  }
+
+  /* På smal skjerm ligger kart og liste under hverandre og siden ruller igjen. */
+  .app--fremvisning {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app--fremvisning .app__panel {
+    overflow-y: visible;
+  }
+
+  .app--fremvisning .app__kart {
     height: 60vh;
   }
 }
@@ -120,6 +170,19 @@ body {
 .leaflet-popup-content {
   margin: var(--purpur-spacing-300);
   width: 16rem !important;
+}
+
+/*
+ * Stoppmarkøren: dråpen tegnes som SVG i Leaflets divIcon, med fargen til
+ * leveransen den hører til. Skyggen erstatter Leaflets eget skyggebilde.
+ */
+.stopp-markor {
+  display: block;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 35%));
+}
+
+.stopp-markor svg {
+  display: block;
 }
 
 /* Kontormarkøren: lilla boble med kontorikon, tegnet som divIcon i Leaflet. */

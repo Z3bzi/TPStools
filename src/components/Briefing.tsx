@@ -15,6 +15,8 @@ export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: St
       <Toppinfo linjer={leveranse.toppinfo} />
 
       <div className="rad">
+        {/* Samme farge som markøren boblen henger på – knytter boblen til dagen. */}
+        <ColorDot color={leveranse.farge} size="sm" withBorder />
         <Paragraph variant="paragraph-100-bold">{formaterAdresse(stopp.adresse)}</Paragraph>
         {leveranse.dato && (
           <Badge variant="special" showIcon={false}>

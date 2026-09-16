@@ -1,18 +1,45 @@
-import { useState } from "react";
-import { Heading, Paragraph } from "@purpurds/purpur";
+import { useEffect, useState } from "react";
+import { Button, Heading, Paragraph } from "@purpurds/purpur";
 
 import { Briefingkart, type Innramming } from "./components/Briefingkart";
+import { Dagslagring } from "./components/Dagslagring";
 import { ExcelOpplasting } from "./components/ExcelOpplasting";
 import { LeveranseDialog, type VentendeImport } from "./components/LeveranseDialog";
 import { LeveranseListe } from "./components/LeveranseListe";
 import { LeveranseSkjema, type SkjemaUtkast } from "./components/LeveranseSkjema";
+import { DagsfilFeil, lesDagsfil } from "./lib/dagsfil";
+import { fordelFarger } from "./lib/farger";
 import { sokAdresser } from "./lib/geonorge";
 import { hentKjoretider } from "./lib/kjoretid";
 import { lesLeveranser, XlsxFeil } from "./lib/leveranse";
-import type { Leveranse, LeveranseUtkast, Stopp } from "./types";
+import type { Leveranse, LeveranseUtkast, Stopp, UfargetLeveranse } from "./types";
+
+/**
+ * Legger nye leveranser bakerst i lista og gir hver av dem sin egen
+ * markørfarge, slik at dagene kan skilles fra hverandre på kartet. En leveranse
+ * som allerede har en farge – den kommer fra en lagret dagsfil – beholder den
+ * når fargen er ledig.
+ */
+function leggIListe(
+  forrige: Leveranse[],
+  nye: (UfargetLeveranse & { farge?: string })[],
+): Leveranse[] {
+  const farger = fordelFarger(
+    forrige.map((leveranse) => leveranse.farge),
+    nye.map((leveranse) => leveranse.farge),
+  );
+
+  return [...forrige, ...nye.map((leveranse, indeks) => ({ ...leveranse, farge: farger[indeks] }))];
+}
 
 export function App() {
   const [leveranser, setLeveranser] = useState<Leveranse[]>([]);
+  /**
+   * Fremvisning er modusen briefingen holdes i: kart og leveranser, ingen
+   * import, ingen skjema, ingenting som kan endres ved et uhell mens crewet
+   * ser på. Planlegging er modusen dagen gjøres klar i.
+   */
+  const [fremvisning, setFremvisning] = useState(false);
   const [aktivtStoppId, setAktivtStoppId] = useState<string | null>(null);
   // Økes hver gang et stopp velges, slik at kartet flyr dit igjen selv om
   // det allerede var det aktive stoppet.
@@ -28,6 +55,20 @@ export function App() {
   const [lasterFil, setLasterFil] = useState(false);
   const [importResultat, setImportResultat] = useState<string | null>(null);
   const [importFeil, setImportFeil] = useState<string | null>(null);
+  const [lasterDag, setLasterDag] = useState(false);
+  const [dagResultat, setDagResultat] = useState<string | null>(null);
+  const [dagFeil, setDagFeil] = useState<string | null>(null);
+
+  // Escape er den vanlige veien ut av en fullskjermvisning, og raskere enn å
+  // lete etter knappen mens prosjektoren står på.
+  useEffect(() => {
+    if (!fremvisning) return;
+    const paTast = (hendelse: KeyboardEvent) => {
+      if (hendelse.key === "Escape") setFremvisning(false);
+    };
+    window.addEventListener("keydown", paTast);
+    return () => window.removeEventListener("keydown", paTast);
+  }, [fremvisning]);
 
   const velgStopp = (id: string) => {
     setAktivtStoppId(id);
@@ -44,10 +85,10 @@ export function App() {
    */
   const leggTil = async (
     utkast: LeveranseUtkast[],
-  ): Promise<{ nye: Leveranse[]; feilet: string[] }> => {
+  ): Promise<{ nye: UfargetLeveranse[]; feilet: string[] }> => {
     const treff = await sokAdresser(utkast.flatMap((l) => l.stopp.map((s) => s.soketekst)));
 
-    const nye: Leveranse[] = [];
+    const nye: UfargetLeveranse[] = [];
     const feilet: string[] = [];
     let neste = 0;
 
@@ -84,7 +125,7 @@ export function App() {
     }
 
     if (nye.length > 0) {
-      setLeveranser((forrige) => [...forrige, ...nye]);
+      setLeveranser((forrige) => leggIListe(forrige, nye));
 
       // Én ny adresse: åpne briefingen med en gang. Ellers rammes kartet inn
       // rundt kontoret og alt som ligger der.
@@ -101,7 +142,7 @@ export function App() {
   };
 
   /** Henter kjøretid for alle nye stopp i én forespørsel. */
-  const beregnKjoretider = async (nye: Leveranse[]) => {
+  const beregnKjoretider = async (nye: UfargetLeveranse[]) => {
     const stopp = nye.flatMap((leveranse) => leveranse.stopp);
     // hentKjoretider faller tilbake på luftlinje-anslag om ruting feiler, og
     // kaster bare hvis oppslaget avbrytes – det gjør vi ikke her.
@@ -210,6 +251,43 @@ export function App() {
     }
   };
 
+  /**
+   * Åpner en dag som er lagret som fil. Adressene er allerede slått opp, så
+   * leveransene legges rett på kartet – det er hele poenget med å forberede
+   * dagen i forveien. Kjøretider som manglet da fila ble lagret hentes i
+   * bakgrunnen, akkurat som ved en vanlig import.
+   */
+  const apneDagsfil = async (fil: File) => {
+    setLasterDag(true);
+    setDagFeil(null);
+    setDagResultat(null);
+
+    try {
+      const apnet = lesDagsfil(await fil.text());
+
+      setLeveranser((forrige) => leggIListe(forrige, apnet));
+      rammInn(null);
+
+      const adresser = apnet.reduce((sum, leveranse) => sum + leveranse.stopp.length, 0);
+      setDagResultat(
+        `Åpnet ${apnet.length} ${apnet.length === 1 ? "leveranse" : "leveranser"} med ${adresser} adresser.`,
+      );
+
+      const utenKjoretid = apnet.filter((leveranse) =>
+        leveranse.stopp.some((stopp) => stopp.kjoretid === null),
+      );
+      if (utenKjoretid.length > 0) void beregnKjoretider(utenKjoretid);
+    } catch (feil) {
+      setDagFeil(
+        feil instanceof DagsfilFeil
+          ? feil.message
+          : "Klarte ikke å lese fila. Velg en dag lagret fra Briefingkart.",
+      );
+    } finally {
+      setLasterDag(false);
+    }
+  };
+
   const fjernLeveranse = (id: string) => {
     const fjernet = leveranser.find((leveranse) => leveranse.id === id);
     setLeveranser((forrige) => forrige.filter((leveranse) => leveranse.id !== id));
@@ -224,38 +302,69 @@ export function App() {
   };
 
   return (
-    <div className="app">
+    <div className={fremvisning ? "app app--fremvisning" : "app"}>
       <header className="app__topp">
-        <Heading tag="h1" variant="title-300">
-          Briefingkart
-        </Heading>
-        <Paragraph variant="paragraph-100">
-          Telia Personlig Service Crew – én leveranse per dag, med alle adressene på kartet,
-          ansvarlige, antall kunder, notat og kjøretid fra kontoret.
-        </Paragraph>
+        <div className="rad rad--mellomrom">
+          <Heading tag="h1" variant={fremvisning ? "title-200" : "title-300"}>
+            Briefingkart
+          </Heading>
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => setFremvisning((forrige) => !forrige)}
+          >
+            {fremvisning ? "Avslutt fremvisning" : "Fremvisningsmodus"}
+          </Button>
+        </div>
+        {!fremvisning && (
+          <Paragraph variant="paragraph-100">
+            Telia Personlig Service Crew – én leveranse per dag, med alle adressene på kartet,
+            ansvarlige, antall kunder, notat og kjøretid fra kontoret.
+          </Paragraph>
+        )}
       </header>
 
       <main className="app__innhold">
         <div className="app__panel">
-          <ExcelOpplasting
-            onFil={importerFil}
-            laster={lasterFil}
-            resultat={importResultat}
-            feilmelding={importFeil}
-            onLukkMelding={() => {
-              setImportResultat(null);
-              setImportFeil(null);
-            }}
-          />
-          <LeveranseSkjema
-            onLagre={lagreFraSkjema}
-            laster={lasterSkjema}
-            feilmelding={skjemaFeil}
-            onLukkFeil={() => setSkjemaFeil(null)}
-          />
+          {/*
+            I fremvisning er panelet bare leveransene: import, skjema og lagring
+            hører til forberedelsen, ikke til møtet.
+          */}
+          {!fremvisning && (
+            <>
+              <ExcelOpplasting
+                onFil={importerFil}
+                laster={lasterFil}
+                resultat={importResultat}
+                feilmelding={importFeil}
+                onLukkMelding={() => {
+                  setImportResultat(null);
+                  setImportFeil(null);
+                }}
+              />
+              <LeveranseSkjema
+                onLagre={lagreFraSkjema}
+                laster={lasterSkjema}
+                feilmelding={skjemaFeil}
+                onLukkFeil={() => setSkjemaFeil(null)}
+              />
+              <Dagslagring
+                leveranser={leveranser}
+                onApne={apneDagsfil}
+                laster={lasterDag}
+                resultat={dagResultat}
+                feilmelding={dagFeil}
+                onLukkMelding={() => {
+                  setDagResultat(null);
+                  setDagFeil(null);
+                }}
+              />
+            </>
+          )}
           <LeveranseListe
             leveranser={leveranser}
             aktivtStoppId={aktivtStoppId}
+            fremvisning={fremvisning}
             onVisStopp={velgStopp}
             onVisLeveranse={rammInn}
             onVisAlle={() => rammInn(null)}
