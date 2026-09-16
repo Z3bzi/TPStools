@@ -65,8 +65,13 @@ export type Leveranse = {
   ansvarlige: string[];
   notat: string;
   opprettet: string;
+  /** Markørfargen leveransen har på kartet, som hex-kode. Se `lib/farger.ts`. */
+  farge: string;
   stopp: Stopp[];
 };
+
+/** En leveranse slik den bygges opp, før den har fått farge av lista den legges i. */
+export type UfargetLeveranse = Omit<Leveranse, "farge">;
 
 /** Et stopp før adressen er slått opp hos Kartverket. */
 export type StoppUtkast = {

@@ -5,6 +5,10 @@ med alle adressene sine som markører – hver med en boble som inneholder det
 crewet trenger i oppstartsmøtet: ansvarlige, antall kunder, utstyr, notat og
 estimert kjøretid fra kontoret.
 
+Hver leveranse har sin egen markørfarge, dagen kan lagres som fil og åpnes
+igjen rett før møtet, og fremvisningsmodus rydder bort alt annet enn kartet og
+leveransene når briefingen holdes.
+
 Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
 ## Slik virker det
@@ -14,6 +18,11 @@ lett å se leveransene i forhold til det. Når noe legges til, rammes kartet inn
 slik at både kontoret og alle adressene er synlige, og hver adresse får estimert
 kjøretid fra kontoret i lista og i boblen. «Vis leveransen» rammer inn adressene
 til én enkelt dag.
+
+Hver leveranse får sin egen markørfarge: alle adressene fra ett dagsark står i
+samme farge, neste dagsark i en annen. Samme farge går igjen som prikk i
+leveransekortet og i boblen, så det er lett å se hvilke adresser som hører
+sammen når flere dager ligger på kartet samtidig.
 
 **Importer en leveranseliste (.xlsx)**
 
@@ -41,9 +50,32 @@ til én enkelt dag.
 3. Ved lagring slås adressene opp hos Kartverkets åpne adresse-API, og hver
    adresse settes som markør med briefingen i boblen.
 
+**Lagre dagen og åpne den igjen**
+
+1. «Last ned dagen» lagrer alle leveransene på kartet som en `.json`-fil på din
+   egen maskin – adresser med ferdige koordinater, crew, notater, kommentarer og
+   kjøretidene som allerede er hentet.
+2. «Åpne lagret dag» legger fila på kartet igjen. Adressene er alt slått opp, så
+   dagen står klar med én gang, uten import og uten nye oppslag.
+3. Dagen kan altså gjøres klar i forveien, kvelden før eller på kontoret, og
+   åpnes rett før briefingen starter.
+4. Leveransene legges til dem som allerede ligger på kartet. Åpner du den samme
+   fila to ganger, får du dagen to ganger – med hver sin markørfarge.
+5. Filer som ikke er lagret fra Briefingkart avvises med en forklaring i stedet
+   for å legge igjen en halv leveranse på kartet.
+
+**Fremvisningsmodus**
+
+Knappen øverst til høyre bytter til fremvisning: da vises bare kartet og
+leveransene. Import, skjema og lagring – og knappene som fjerner noe – er borte,
+kartet fyller høyden og siden slutter å rulle. Det er modusen selve briefingen
+holdes i. «Avslutt fremvisning» eller Escape går tilbake til planlegging.
+
 Leveransene lever i nettleserens minne så lenge fanen er åpen, og forsvinner ved
-refresh. Det er bevisst for et briefingverktøy – ingen kundedata lagres noe sted,
-og Excel-filen forlater aldri nettleseren.
+refresh – med mindre dagen er lastet ned som fil først. Excel-filen forlater
+aldri nettleseren, og dagsfila lastes ned lokalt og leses lokalt; ingenting
+sendes noe sted. Merk at en nedlastet dagsfil inneholder kundedata – adresser,
+leilighetsnumre og kommentarer – og skal behandles deretter.
 
 ## Teknologi
 
@@ -60,8 +92,13 @@ og Excel-filen forlater aldri nettleseren.
 Alt UI utenom selve kartflaten er bygget med Purpur-komponenter (`Button`,
 `Card`, `TextField`, `TextArea`, `DismissableChipGroup`, `Modal`,
 `Notification`, `Badge`, `ColorDot`, `Heading`, `Paragraph`). Egen CSS brukes kun til
-sidelayout, kartflaten og kontormarkøren, og henter farger, avstander og radier
+sidelayout, kartflaten og markørene, og henter farger, avstander og radier
 fra Purpurs designtokens. Kontorikonet er Purpurs `connected-building`.
+
+Stoppmarkørene tegnes som SVG i Leaflets `divIcon` i stedet for å bruke
+Leaflets eget markørbilde. Det er det som gjør at hver leveranse kan ha sin egen
+farge – bildet kan ikke farges, og fargene ligger uansett i appen, ikke i
+Leaflet. Palettverdiene står i `src/lib/farger.ts`.
 
 ### Hvorfor en egen Excel-leser
 
@@ -123,11 +160,14 @@ npm run lint     # oxlint
 | `src/components/Briefingkart.tsx`  | Leaflet-kartet, kontormarkør og briefing-popup       |
 | `src/components/Briefing.tsx`      | Innholdet i markørboblen                             |
 | `src/components/LeveranseListe.tsx` | Leveransene som kort, med adressene sine            |
+| `src/components/Dagslagring.tsx`   | Nedlasting og åpning av dagen som `.json`-fil        |
 | `src/components/Kjoretidsbadge.tsx`| Kjøretiden som Purpur-badge, lik i lista og i boblen |
 | `src/components/Toppinfo.tsx`      | Toppinfoen fra dagsarket, lik i lista og i boblen     |
 | `src/lib/xlsx.ts`                  | Minimal .xlsx-leser som også henter cellefarger      |
 | `src/lib/leveranse.ts`             | Tolker leveranselista til én leveranse per dagsark   |
 | `src/lib/kontor.ts`                | Kontoret på Økern Portal                             |
+| `src/lib/dagsfil.ts`               | Dagen lagret som JSON, med validering ved åpning     |
+| `src/lib/farger.ts`                | Markørfargene leveransene skilles på                 |
 | `src/lib/navn.ts`                  | Navnelister skrevet med komma                        |
 | `src/lib/kjoretid.ts`              | Ruting mot OSRM, med luftlinje-anslag som fallback   |
 | `src/lib/geonorge.ts`              | Adressesøk mot Kartverket                            |
@@ -149,7 +189,12 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
   nødvendigvis på inngangen crewet kjører fra. Flyttes kontoret, endres
   koordinaten der.
 - Samme adresse på to dagsark gir to markører oppå hverandre – én per
-  leveranse. Datoen står i boblen, men markørene ligger på samme punkt.
+  leveranse. De har hver sin farge og datoen står i boblen, men markørene ligger
+  fortsatt på samme punkt, så den øverste skjuler den andre.
+- Paletten har åtte farger. Ligger det flere leveranser enn det på kartet
+  samtidig, går fargene rundt på nytt og to dager deler farge.
+- En dagsfil er knyttet til formatet appen har nå. Filer fra en nyere versjon av
+  Briefingkart avvises framfor å bli lest halvveis.
 - Ark som heter «Underlag» eller «Informasjon» hoppes over. Et dagsark må ha
   en overskriftsrad med «Subscriber name», «Street name» og «House number».
 - Ved tvetydig adresse brukes Kartverkets beste treff. Hele den bekreftede
@@ -159,7 +204,6 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
 
 - Adresseforslag mens man skriver (Purpur `Autocomplete` mot samme Kartverk-API).
 - Filtrering på leveranse, så én dag kan vises om gangen.
-- Egen markørfarge per leveranse, så dagene skilles fra hverandre på kartet.
 - Spre markører som ligger på samme punkt, f.eks. med klynging.
 - Deling av en briefing via lenke, f.eks. leveransen kodet i URL-en.
 - Sortering av adressene i en leveranse etter kjøretid, og samlet kjøretid for

@@ -16,6 +16,8 @@ import { Toppinfo } from "./Toppinfo";
 type Props = {
   leveranser: Leveranse[];
   aktivtStoppId: string | null;
+  /** I fremvisning står lista til å leses, ikke til å endres. */
+  fremvisning?: boolean;
   onVisStopp: (id: string) => void;
   onVisLeveranse: (id: string) => void;
   onVisAlle: () => void;
@@ -26,6 +28,7 @@ type Props = {
 export function LeveranseListe({
   leveranser,
   aktivtStoppId,
+  fremvisning = false,
   onVisStopp,
   onVisLeveranse,
   onVisAlle,
@@ -38,8 +41,12 @@ export function LeveranseListe({
         <Card.ContentContainer>
           <Card.Content>
             <Paragraph variant="paragraph-100">
-              Ingen leveranser på kartet ennå. Importer en leveranseliste eller legg inn adresser i
-              skjemaet, så settes hver adresse som markør med briefing i boblen.
+              {fremvisning
+                ? "Ingen leveranser på kartet. Avslutt fremvisningen for å importere en liste " +
+                  "eller åpne en lagret dag."
+                : "Ingen leveranser på kartet ennå. Importer en leveranseliste, åpne en lagret " +
+                  "dag eller legg inn adresser i skjemaet, så settes hver adresse som markør " +
+                  "med briefing i boblen."}
             </Paragraph>
           </Card.Content>
         </Card.ContentContainer>
@@ -60,9 +67,11 @@ export function LeveranseListe({
           <Button variant="text" onClick={onVisAlle}>
             Vis alle
           </Button>
-          <Button variant="text" onClick={onFjernAlle}>
-            Tøm kartet
-          </Button>
+          {!fremvisning && (
+            <Button variant="text" onClick={onFjernAlle}>
+              Tøm kartet
+            </Button>
+          )}
         </div>
       </div>
 
@@ -77,7 +86,12 @@ export function LeveranseListe({
         return (
           <Card key={leveranse.id} variant={harAktivtStopp ? "primary" : "secondary"}>
             <Card.ContentContainer>
-              <Card.Heading title={leveranse.dato ?? "Lagt inn manuelt"} titleTag="h3" />
+              <Card.Heading
+                title={leveranse.dato ?? "Lagt inn manuelt"}
+                titleTag="h3"
+                // Samme farge som markørene leveransen har på kartet.
+                icon={<ColorDot color={leveranse.farge} size="md" withBorder />}
+              />
               <Card.Content>
                 <div className="stabel">
                   <Toppinfo linjer={leveranse.toppinfo} />
@@ -144,9 +158,11 @@ export function LeveranseListe({
                     <Button variant="secondary" onClick={() => onVisLeveranse(leveranse.id)}>
                       Vis leveransen
                     </Button>
-                    <Button variant="text" onClick={() => onFjern(leveranse.id)}>
-                      Fjern
-                    </Button>
+                    {!fremvisning && (
+                      <Button variant="text" onClick={() => onFjern(leveranse.id)}>
+                        Fjern
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card.Content>

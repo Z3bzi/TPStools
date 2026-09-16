@@ -1,27 +1,51 @@
 import { useEffect, useRef } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import L, { type Marker as LeafletMarker } from "leaflet";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import L, { type DivIcon, type Marker as LeafletMarker } from "leaflet";
 import kontorIkonSvg from "@purpurds/purpur/icon/svg/connected-building.svg?raw";
 import { Paragraph } from "@purpurds/purpur";
 
 import { Briefing } from "./Briefing";
+import { erFarge, LEVERANSEFARGER } from "../lib/farger";
 import { KONTOR } from "../lib/kontor";
 import type { Leveranse } from "../types";
 
-// Leaflet slår opp markørbildene via relative stier som ikke overlever
-// bundling – derfor pekes de eksplisitt på filene Vite har hashet.
-const stoppIkon = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+/**
+ * Markørene tegnes selv i stedet for å bruke Leaflets blå bilde, slik at hver
+ * leveranse kan få sin egen farge. Formen er den samme dråpen crewet kjenner
+ * igjen, med hvit kontur og hvitt senter så den leses mot alle karttyper.
+ */
+function pinSvg(farge: string): string {
+  return (
+    '<svg viewBox="0 0 26 38" width="26" height="38" aria-hidden="true">' +
+    `<path d="M13 1C6.4 1 1 6.4 1 13c0 8.2 12 24 12 24s12-15.8 12-24c0-6.6-5.4-12-12-12z" fill="${farge}" stroke="#ffffff" stroke-width="2"/>` +
+    '<circle cx="13" cy="13" r="4.5" fill="#ffffff"/>' +
+    "</svg>"
+  );
+}
+
+// Ikonene er like for alle stopp i samme leveranse, så de lages én gang per
+// farge i stedet for én gang per markør.
+const stoppIkoner = new Map<string, DivIcon>();
+
+function stoppIkon(farge: string): DivIcon {
+  // Fargen havner i markup, så bare hex-koder slipper gjennom. En leveranse
+  // lest fra en lagret dagsfil kan i prinsippet ha hva som helst her.
+  const trygg = erFarge(farge) ? farge : LEVERANSEFARGER[0];
+
+  let ikon = stoppIkoner.get(trygg);
+  if (!ikon) {
+    ikon = L.divIcon({
+      html: `<span class="stopp-markor">${pinSvg(trygg)}</span>`,
+      className: "",
+      iconSize: [26, 38],
+      iconAnchor: [13, 37],
+      popupAnchor: [0, -34],
+    });
+    stoppIkoner.set(trygg, ikon);
+  }
+
+  return ikon;
+}
 
 const kontorIkon = L.divIcon({
   html: `<span class="kontor-markor">${kontorIkonSvg}</span>`,
@@ -105,7 +129,7 @@ export function Briefingkart({ leveranser, aktivtStoppId, fokusTeller, innrammin
           <Marker
             key={stopp.id}
             position={[stopp.adresse.lat, stopp.adresse.lon]}
-            icon={stoppIkon}
+            icon={stoppIkon(leveranse.farge)}
             ref={(markor) => {
               if (markor) markorer.current.set(stopp.id, markor);
               else markorer.current.delete(stopp.id);
@@ -140,6 +164,15 @@ function KartKamera({
   const kart = useMap();
   const sisteFokus = useRef(fokus);
   const sistePunkter = useRef(punkter);
+
+  // Kartflaten skifter størrelse når fremvisningsmodus slås av og på. Leaflet
+  // oppdager det ikke selv, og ville ellers tegnet fliser for den gamle
+  // størrelsen til noen panorerer.
+  useEffect(() => {
+    const observator = new ResizeObserver(() => kart.invalidateSize());
+    observator.observe(kart.getContainer());
+    return () => observator.disconnect();
+  }, [kart]);
 
   useEffect(() => {
     sisteFokus.current = fokus;
