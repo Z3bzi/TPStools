@@ -188,9 +188,19 @@ body {
   border-radius: var(--purpur-border-radius-md);
 }
 
+/*
+ * Bredden på boblen. Den ligger som variabel slik at crewet kan dra kantene og
+ * få plass til mer av briefingen; !important trengs fordi Leaflet selv skriver
+ * en målt bredde rett på elementet hver gang boblen tegnes om.
+ */
 .leaflet-popup-content {
   margin: var(--purpur-spacing-300);
-  width: 16rem !important;
+  width: var(--boble-bredde, 16rem) !important;
+}
+
+/* Kantene ligger på selve kortet. */
+.leaflet-popup-content-wrapper {
+  position: relative;
 }
 
 /*
@@ -224,10 +234,111 @@ body {
   height: 1.125rem;
 }
 
-/* Lange briefinger skal ikke sprenge kartflaten. */
+/*
+ * Lange briefinger skal ikke sprenge kartflaten. Uten --boble-hoyde vokser
+ * innholdet fritt opp til 22rem; er høyden satt ved å dra i en kant, gjelder
+ * den i stedet – også når innholdet er kortere enn boblen.
+ */
 .leaflet-popup-content .briefing__innhold {
-  max-height: 22rem;
+  max-height: var(--boble-hoyde, 22rem);
+  height: var(--boble-hoyde, auto);
   overflow-y: auto;
+}
+
+/*
+ * Dragkantene rundt boblekortet. De ligger litt utenfor kanten, er
+ * gjennomsiktige og merkes bare på musepekeren – utenom hjørnet nede til
+ * høyre, som har et lite merke så det er synlig at boblen kan endres.
+ */
+.boble-kant {
+  position: absolute;
+  z-index: 1;
+  touch-action: none;
+}
+
+.boble-kant--nord,
+.boble-kant--sor {
+  left: var(--purpur-spacing-200);
+  right: var(--purpur-spacing-200);
+  height: var(--purpur-spacing-100);
+  cursor: ns-resize;
+}
+
+.boble-kant--nord {
+  top: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--sor {
+  bottom: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--vest,
+.boble-kant--ost {
+  top: var(--purpur-spacing-200);
+  bottom: var(--purpur-spacing-200);
+  width: var(--purpur-spacing-100);
+  cursor: ew-resize;
+}
+
+.boble-kant--vest {
+  left: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--ost {
+  right: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--nordvest,
+.boble-kant--nordost,
+.boble-kant--sorvest,
+.boble-kant--sorost {
+  width: var(--purpur-spacing-200);
+  height: var(--purpur-spacing-200);
+}
+
+.boble-kant--nordvest,
+.boble-kant--sorost {
+  cursor: nwse-resize;
+}
+
+.boble-kant--nordost,
+.boble-kant--sorvest {
+  cursor: nesw-resize;
+}
+
+.boble-kant--nordvest {
+  top: calc(-1 * var(--purpur-spacing-50));
+  left: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--nordost {
+  top: calc(-1 * var(--purpur-spacing-50));
+  right: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--sorvest {
+  bottom: calc(-1 * var(--purpur-spacing-50));
+  left: calc(-1 * var(--purpur-spacing-50));
+}
+
+.boble-kant--sorost {
+  bottom: calc(-1 * var(--purpur-spacing-50));
+  right: calc(-1 * var(--purpur-spacing-50));
+}
+
+/* Synlig merke i hjørnet: to skrå streker, som på et vindu som kan dras ut. */
+.boble-kant--sorost::after {
+  content: "";
+  position: absolute;
+  inset: var(--purpur-spacing-25);
+  border-right: var(--purpur-border-width-md) solid var(--purpur-color-border-weak);
+  border-bottom: var(--purpur-border-width-md) solid var(--purpur-color-border-weak);
+  border-bottom-right-radius: var(--purpur-border-radius-sm);
+}
+
+.boble-kant:hover::after,
+.boble-kant--drar::after {
+  border-color: var(--purpur-color-background-interactive-primary);
 }
 
 /*
