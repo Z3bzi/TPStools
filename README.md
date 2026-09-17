@@ -35,13 +35,20 @@ sammen når flere dager ligger på kartet samtidig.
    Andre farger telles som «annen merking» framfor å bli gjettet på.
 4. B1, C1 og H1 i dagsarket leses som toppinfo og står øverst både i
    leveransekortet og i boblen. Tomme celler faller bort.
-5. Ansvarlige hentes fra navnekolonnene i overskriftsraden, og fellesinfo
+5. Navnene i overskriftsraden leses som hint om hvem som var tenkt ut, og
+   fellesinfo
    (leveransetype, plattform, TV/BB, kontaktperson, parkering, prosjektleder)
-   fra informasjonsfanen. Radkommentarer følger med per leilighet.
-6. En dialog spør hvem som skal ut på hver leveranse, med ett felt per dagsark
-   forhåndsutfylt med navnene fra arket. Navn skrives skilt med komma.
-7. Først når crewet er bekreftet, geokodes adressene og leveransene legges på
-   kartet. Avbryter du dialogen, er ingenting slått opp.
+   hentes fra informasjonsfanen. Radkommentarer følger med per leilighet.
+6. En dialog viser dagsarkene fila inneholder, med antall adresser og kunder
+   per ark. Huk av dem som skal importeres – en arbeidsliste inneholder gjerne
+   flere dager enn den ene crewet skal ut på. Arkene er huket av på forhånd,
+   så det er nok å fjerne dem du ikke vil ha.
+7. Samme dialog spør hvem som skal ut på hver leveranse. Feltet står alltid
+   tomt: navnene i arket stemmer ikke nødvendigvis med hvem som faktisk skal
+   ut, så de vises som hint under feltet i stedet for å fylles inn. Navn
+   skrives skilt med komma.
+8. Først når arkene er valgt og crewet satt, geokodes adressene og leveransene
+   legges på kartet. Avbryter du dialogen, er ingenting slått opp.
 
 **Eller legg inn adresser manuelt**
 
@@ -50,6 +57,21 @@ sammen når flere dager ligger på kartet samtidig.
 2. Ansvarlige skrives som ett navn eller flere skilt med komma.
 3. Ved lagring slås adressene opp hos Kartverkets åpne adresse-API, og hver
    adresse settes som markør med briefingen i boblen.
+
+**Rett opp en leveranse etterpå**
+
+1. «Rediger» på et leveransekort åpner dagen for retting – enten den kom fra en
+   liste, fra skjemaet eller fra en lagret dagsfil.
+2. Dato, ansvarlige, toppinfo og notat rettes i toppen av dialogen. Under ligger
+   adressene, én og én: antall kunder, utstyrsfordelingen og kommentarene kan
+   endres, og en adresse kan fjernes fra leveransen.
+3. Nye adresser skrives nederst, én per linje. De slås opp hos Kartverket når du
+   lagrer, og får kjøretid fra kontoret som alle andre. Adresser som ikke blir
+   funnet sier dialogen fra om, og blir stående så de kan rettes – resten er
+   lagret.
+4. En leveranse må ha minst én adresse. Skal hele dagen bort, er det «Fjern» på
+   leveransekortet som gjør det.
+5. Endringene følger med når dagen lastes ned som fil.
 
 **Flere bobler oppe samtidig**
 
@@ -194,7 +216,8 @@ npm run lint     # oxlint
 | `src/App.tsx`                      | Tilstand for leveranser, geokoding og valgt stopp    |
 | `src/components/LeveranseSkjema.tsx` | Skjemaet, bygget med Purpur-komponenter            |
 | `src/components/ExcelOpplasting.tsx` | Import av leveranseliste, med fargeforklaring      |
-| `src/components/LeveranseDialog.tsx` | Dialogen som spør hvem som skal ut på leveransene  |
+| `src/components/LeveranseDialog.tsx` | Dialogen som velger dagsark og setter crewet        |
+| `src/components/LeveranseRedigering.tsx` | Retting av en leveranse som ligger på kartet   |
 | `src/components/Briefingkart.tsx`  | Leaflet-kartet, markører, og bobler som kan flyttes  |
 | `src/components/Briefing.tsx`      | Innholdet i markørboblen                             |
 | `src/components/LeveranseListe.tsx` | Leveransene som kort, med adressene sine            |
@@ -238,8 +261,9 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
   samtidig, går fargene rundt på nytt og to dager deler farge.
 - En dagsfil er knyttet til formatet appen har nå. Filer fra en nyere versjon av
   Briefingkart avvises framfor å bli lest halvveis.
-- Ark som heter «Underlag» eller «Informasjon» hoppes over. Et dagsark må ha
-  en overskriftsrad med «Subscriber name», «Street name» og «House number».
+- Ark som heter «Underlag» eller «Informasjon» hoppes over, og kommer derfor
+  heller ikke opp som valg i importdialogen. Et dagsark må ha en overskriftsrad
+  med «Subscriber name», «Street name» og «House number».
 - Ved tvetydig adresse brukes Kartverkets beste treff. Hele den bekreftede
   adressen vises, slik at feiltreff er synlige.
 

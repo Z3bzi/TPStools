@@ -85,7 +85,10 @@ export type StoppUtkast = {
 export type LeveranseUtkast = {
   dato: string | null;
   toppinfo: string[];
-  /** Navnene som sto i arket. Kan overstyres i dialogen før import. */
+  /**
+   * Navnene som sto i arket. Vises som hint i importdialogen, men fylles aldri
+   * inn i feltet: det er navnene noen skriver selv som blir med videre.
+   */
   ansvarlige: string[];
   notat: string;
   stopp: StoppUtkast[];

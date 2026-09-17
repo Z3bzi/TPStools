@@ -431,3 +431,26 @@ body {
   background-color: var(--purpur-color-background-secondary);
   border-left: var(--purpur-border-width-md) solid var(--purpur-color-background-interactive-primary);
 }
+
+/*
+ * Ett ark i importdialogen: avkryssingen og navnefeltet hører sammen, og
+ * streken til venstre viser hvilke ark som faktisk blir importert.
+ */
+.arkvalg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--purpur-spacing-100);
+  padding-left: var(--purpur-spacing-200);
+  border-left: var(--purpur-border-width-md) solid var(--purpur-color-border-weak);
+}
+
+.arkvalg--valgt {
+  border-left-color: var(--purpur-color-background-interactive-primary);
+}
+
+/* Utstyrstallene i redigeringen: fire små felt som deler bredden. */
+.redigering__utstyr {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--purpur-spacing-200);
+}

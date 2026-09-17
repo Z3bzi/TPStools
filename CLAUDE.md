@@ -38,7 +38,8 @@ refresh – med mindre dagen er lastet ned som `.json`-fil først.
 ```
 .xlsx  -> lib/xlsx.ts      (unzip + styles.xml -> Celle{verdi, fyll})
        -> lib/leveranse.ts (ett dagsark = én LeveranseUtkast, rader gruppert per adresse)
-       -> LeveranseDialog  (crewet bekreftes – ingenting slås opp før dette)
+       -> LeveranseDialog  (dagsark hukes av og crewet skrives – ingenting
+                           slås opp før dette)
        -> lib/geonorge.ts  (sokAdresser -> AdresseTreff med koordinat)
        -> App.leggTil      (LeveranseUtkast -> UfargetLeveranse -> Leveranse)
        -> lib/farger.ts    (fordelFarger gir hver leveranse markørfarge)
@@ -49,7 +50,9 @@ refresh – med mindre dagen er lastet ned som `.json`-fil først.
 Typenavnene i `src/types.ts` koder hvor i flyten dataene er:
 `LeveranseUtkast`/`StoppUtkast` = før geokoding, `UfargetLeveranse` = før
 fargen er tildelt, `Leveranse`/`Stopp` = ferdig, det som ligger på kartet og i
-dagsfila. En **leveranse** er én dag crewet er ute (ett dagsark), et **stopp**
+dagsfila. `LeveranseRedigering` går andre veien: den bygger et
+`Leveranse`-objekt tilbake fra tekstfelt, og adressene som legges til der er
+det eneste som geokodes etter import. En **leveranse** er én dag crewet er ute (ett dagsark), et **stopp**
 er én adresse/oppgang i den dagen.
 
 ### App.tsx styrer kartet med tellere, ikke med kall
@@ -114,6 +117,14 @@ bildet ikke kan farges per leveranse.
   `hentKjoretider` kaster kun ved abort.
 - **Kontorets posisjon er en fast koordinat** i `lib/kontor.ts`, ikke et
   adresseoppslag. Skal kontoret flyttes, endres konstanten.
+- **Navnene fra arket fylles aldri inn.** Importdialogen starter med tomt
+  navnefelt og viser arkets navn som hint: det er navnene noen har skrevet selv
+  som blir med videre. `LeveranseUtkast.ansvarlige` overskrives derfor av
+  dialogen.
+- **Redigeringsmodalen leser feltene inn på nytt under rendringen** når
+  leveransen bytter identitet (`sistLest !== leveranse`), slik at en ny lagring
+  bygger på det som faktisk er lagret. Adresser som er skrevet inn, men ikke
+  slått opp ennå, bæres med over – de er ikke en del av den lagrede leveransen.
 - **Fremvisningsmodus** (`app--fremvisning`) skjuler alt som endrer data –
   import, skjema, lagring og fjern-knapper. Nye kontroller som kan endre noe
   må også skjules der.
