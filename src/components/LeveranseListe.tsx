@@ -1,15 +1,8 @@
 import { Badge, Button, Card, ColorDot, Heading, Paragraph } from "@purpurds/purpur";
 
 import { formaterAdresse } from "../lib/geonorge";
-import { summerUtstyr } from "../lib/leveranse";
-import {
-  TOMT_UTSTYR,
-  UTSTYR_ETIKETT,
-  UTSTYR_FARGE,
-  type Leveranse,
-  type Utstyr,
-  type UtstyrKategori,
-} from "../types";
+import { summerLeveranseUtstyr, summerUtstyr, tellKunder } from "../lib/leveranse";
+import { UTSTYR_ETIKETT, UTSTYR_FARGE, type Leveranse } from "../types";
 import { Kjoretidsbadge } from "./Kjoretidsbadge";
 import { Toppinfo } from "./Toppinfo";
 
@@ -28,6 +21,8 @@ type Props = {
   onRediger: (id: string) => void;
   onFjern: (id: string) => void;
   onFjernAlle: () => void;
+  /** Åpner nettleserens utskriftsdialog med dagen på papir. */
+  onSkrivUt: () => void;
 };
 
 export function LeveranseListe({
@@ -42,6 +37,7 @@ export function LeveranseListe({
   onRediger,
   onFjern,
   onFjernAlle,
+  onSkrivUt,
 }: Props) {
   if (leveranser.length === 0) {
     return (
@@ -78,6 +74,9 @@ export function LeveranseListe({
           <Button variant="text" onClick={onLukkBobler}>
             Lukk boblene
           </Button>
+          <Button variant="text" onClick={onSkrivUt} disabled={leveranser.length === 0}>
+            Skriv ut
+          </Button>
           {!fremvisning && (
             <Button variant="text" onClick={onFjernAlle}>
               Tøm kartet
@@ -91,7 +90,7 @@ export function LeveranseListe({
       </Paragraph>
 
       {leveranser.map((leveranse) => {
-        const utstyr = summerUtstyr(summerLeveranse(leveranse));
+        const utstyr = summerUtstyr(summerLeveranseUtstyr(leveranse));
         const harAktivtStopp = leveranse.stopp.some((s) => s.id === aktivtStoppId);
 
         return (
@@ -191,26 +190,4 @@ export function LeveranseListe({
       })}
     </div>
   );
-}
-
-function tellKunder(leveranse: Leveranse): number {
-  return leveranse.stopp.reduce((sum, stopp) => sum + (stopp.antallKunder ?? 0), 0);
-}
-
-/** Utstyret for hele leveransen, summert over stoppene som har merking. */
-function summerLeveranse(leveranse: Leveranse): Utstyr | null {
-  const medUtstyr = leveranse.stopp.filter((stopp) => stopp.utstyr !== null);
-  if (medUtstyr.length === 0) return null;
-
-  const sum: Utstyr = { ...TOMT_UTSTYR };
-  for (const stopp of medUtstyr) {
-    for (const [kategori, antall] of Object.entries(stopp.utstyr ?? {}) as [
-      UtstyrKategori,
-      number,
-    ][]) {
-      sum[kategori] += antall;
-    }
-  }
-
-  return sum;
 }

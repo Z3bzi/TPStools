@@ -8,6 +8,7 @@ import { LeveranseDialog, type VentendeImport } from "./components/LeveranseDial
 import { LeveranseListe } from "./components/LeveranseListe";
 import { LeveranseRedigering } from "./components/LeveranseRedigering";
 import { LeveranseSkjema, type SkjemaUtkast } from "./components/LeveranseSkjema";
+import { Utskrift } from "./components/Utskrift";
 import { DagsfilFeil, lesDagsfil } from "./lib/dagsfil";
 import { fordelFarger } from "./lib/farger";
 import { sokAdresser } from "./lib/geonorge";
@@ -429,6 +430,7 @@ export function App() {
             onRediger={setRedigererId}
             onFjern={fjernLeveranse}
             onFjernAlle={fjernAlle}
+            onSkrivUt={() => window.print()}
           />
         </div>
 
@@ -457,6 +459,13 @@ export function App() {
           />
         </section>
       </main>
+
+      {/*
+        Dagen på papir. Ligger utenfor panelet fordi utskriften ikke er en
+        omstyling av skjermbildet, men sitt eget ark: skjult på skjerm, og det
+        eneste som vises i @media print.
+      */}
+      <Utskrift leveranser={leveranser} />
 
       <LeveranseDialog
         ventende={ventende}

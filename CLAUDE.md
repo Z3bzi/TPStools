@@ -45,6 +45,7 @@ refresh – med mindre dagen er lastet ned som `.json`-fil først.
        -> lib/farger.ts    (fordelFarger gir hver leveranse markørfarge)
        -> Briefingkart     (markører + bobler)
           lib/kjoretid.ts kjører i bakgrunnen og fyller inn `kjoretid` etterpå
+       -> Utskrift         (samme leveranser som eget ark, kun i @media print)
 ```
 
 Typenavnene i `src/types.ts` koder hvor i flyten dataene er:
@@ -84,6 +85,31 @@ ligger, og to valg der er lette å ødelegge ved en refaktorering:
 
 Lytterne for `pointerdown`/`dblclick` ligger på `document` i **fangstfasen**,
 fordi Leaflet stopper disse hendelsene inne i boblen.
+
+### Utskriften er et eget ark
+
+`components/Utskrift.tsx` rendrer hele briefingen for alle leveransene én gang
+til, skjult på skjerm og synlig kun i `@media print` (se `.utskrift` nederst i
+`index.css`). Den er bevisst ikke en omstyling av skjermbildet: leveransekortene
+i `LeveranseListe` har verken notat eller kommentarer, og briefingen som har alt
+ligger i Leaflet-bobler som bare finnes i DOM-en mens boblen står åpen. Arket
+bygges fra tilstanden, så papiret blir likt uansett hvilke bobler som står oppe.
+
+Konsekvensen er at **nytt innhold i briefingen må legges inn to steder**:
+`Briefing.tsx` for boblen og `Utskrift.tsx` for papiret. Summeringene de deler
+(`tellKunder`, `summerLeveranseUtstyr`, `summerUtstyr`) ligger i
+`lib/leveranse.ts` nettopp for å slippe en tredje kopi.
+
+I print slås `.app__innhold` av, og alt som portaleres ut på `<body>` med den.
+Kommer det nye kontroller utenfor `.app__innhold`, må de skjules der på samme
+måte. Papiret er rein, semantisk markup uten Purpur-kort og uten fargeprikker:
+kortbakgrunner spiser blekk, og farge krever `print-color-adjust: exact` for i
+det hele tatt å komme med, så utstyrsmerkingen står som tekst.
+`break-after: page` på hver dag gir én leveranse per side – `:last-child`-
+unntaket må stå, ellers blir det en tom side til slutt – og `break-inside:
+avoid` på hvert stopp er det som holder en adresse samlet. Arket er `aria-hidden`
+på skjerm, så skjermlesere ikke leser dagen to ganger. Kartet holdes utenfor:
+Leaflet-flisene gjengis ikke pålitelig i utskrift.
 
 ### Purpur (Telias designsystem)
 
@@ -127,7 +153,8 @@ bildet ikke kan farges per leveranse.
   slått opp ennå, bæres med over – de er ikke en del av den lagrede leveransen.
 - **Fremvisningsmodus** (`app--fremvisning`) skjuler alt som endrer data –
   import, skjema, lagring og fjern-knapper. Nye kontroller som kan endre noe
-  må også skjules der.
+  må også skjules der. «Skriv ut» står igjen, siden den bare åpner
+  utskriftsdialogen.
 - Ingenting sendes noe sted, men en nedlastet dagsfil inneholder kundedata
   (adresser, leilighetsnumre, kommentarer).
 

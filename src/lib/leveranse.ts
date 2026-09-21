@@ -1,6 +1,7 @@
 import { lesArbeidsbok, XlsxFeil, type Ark, type Celle } from "./xlsx";
 import {
   TOMT_UTSTYR,
+  type Leveranse,
   type LeveranseUtkast,
   type StoppUtkast,
   type Utstyr,
@@ -236,6 +237,33 @@ export function klassifiserUtstyr(fyll: string | null): UtstyrKategori {
 export function summerUtstyr(utstyr: Utstyr | null): [UtstyrKategori, number][] {
   if (!utstyr) return [];
   return (Object.entries(utstyr) as [UtstyrKategori, number][]).filter(([, antall]) => antall > 0);
+}
+
+/** Kundene i hele leveransen. Stopp uten tall teller som null kunder. */
+export function tellKunder(leveranse: Leveranse): number {
+  return leveranse.stopp.reduce((sum, stopp) => sum + (stopp.antallKunder ?? 0), 0);
+}
+
+/**
+ * Utstyret for hele leveransen, summert over stoppene som har merking. Null
+ * når ingen av adressene har utstyr – da er det ingenting å oppsummere, og
+ * lista og utskriften hopper over avsnittet framfor å vise fire nuller.
+ */
+export function summerLeveranseUtstyr(leveranse: Leveranse): Utstyr | null {
+  const medUtstyr = leveranse.stopp.filter((stopp) => stopp.utstyr !== null);
+  if (medUtstyr.length === 0) return null;
+
+  const sum: Utstyr = { ...TOMT_UTSTYR };
+  for (const stopp of medUtstyr) {
+    for (const [kategori, antall] of Object.entries(stopp.utstyr ?? {}) as [
+      UtstyrKategori,
+      number,
+    ][]) {
+      sum[kategori] += antall;
+    }
+  }
+
+  return sum;
 }
 
 function tekst(celle: Celle | undefined): string {

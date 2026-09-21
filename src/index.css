@@ -454,3 +454,133 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--purpur-spacing-200);
 }
+
+/*
+ * Utskrift: dagen på papir, eller «Lagre som PDF» i utskriftsdialogen.
+ *
+ * Arket rendres av `Utskrift.tsx` fra leveransene i tilstanden, ikke fra
+ * skjermbildet, og ligger skjult til utskriften faktisk skjer. Det er derfor
+ * papiret blir likt uansett hvilke bobler som står åpne på kartet – og derfor
+ * alt det andre kan slås av her uten at noe innhold forsvinner.
+ */
+.utskrift {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  /*
+   * Purpurs modaler og andre portaler henger på <body>, utenfor #root, og ville
+   * ellers blitt med på papiret.
+   */
+  body > *:not(#root) {
+    display: none !important;
+  }
+
+  /* Kart, panel, import, skjema, lagring, knapper og varsler – alt sammen. */
+  .app__innhold {
+    display: none;
+  }
+
+  /*
+   * Fremvisning låser siden til én skjermhøyde. På papir ruller arket videre,
+   * og flex-oppsettet byttes ut med vanlige blokker: sidebrytingen nedenfor er
+   * det fragmentering av blokker som gjør forutsigbart.
+   */
+  .app,
+  .app--fremvisning {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .utskrift {
+    display: block;
+    color: var(--purpur-color-text-default);
+    font-size: var(--purpur-typography-scale-75);
+    line-height: var(--purpur-typography-line-height-default);
+  }
+
+  .utskrift p {
+    margin: 0;
+    /* Én enslig linje igjen på forrige side leses dårlig i et langt notat. */
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Én leveranse per side: dagen crewet har med seg skal stå for seg selv. */
+  .utskrift__dag {
+    break-after: page;
+  }
+
+  /* Uten dette gir siste dag en tom side til slutt. */
+  .utskrift__dag:last-child {
+    break-after: auto;
+  }
+
+  .utskrift__topp {
+    margin-bottom: var(--purpur-spacing-250);
+    padding-bottom: var(--purpur-spacing-150);
+    border-bottom: var(--purpur-border-width-xs) solid var(--purpur-color-border-medium);
+  }
+
+  .utskrift__dato {
+    margin: 0;
+    font-size: var(--purpur-typography-scale-300);
+    font-weight: var(--purpur-typography-weight-bold);
+    line-height: var(--purpur-typography-line-height-tight);
+  }
+
+  .utskrift__ansvarlige {
+    font-size: var(--purpur-typography-scale-100);
+  }
+
+  /* Skrives med samme spesifisitet som nullstillingen av avsnittene over. */
+  .utskrift .utskrift__toppinfo {
+    margin-top: var(--purpur-spacing-50);
+    font-weight: var(--purpur-typography-weight-bold);
+  }
+
+  .utskrift .utskrift__sum,
+  .utskrift .utskrift__notat {
+    margin-top: var(--purpur-spacing-150);
+  }
+
+  .utskrift__stoppliste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /*
+   * En adresse skal leses i ett, ikke deles av et sideskift: kjøretiden,
+   * utstyret og kommentarene hører til adressen over dem.
+   */
+  .utskrift__stopp {
+    break-inside: avoid;
+    padding: var(--purpur-spacing-150) 0;
+    border-bottom: var(--purpur-border-width-xs) solid var(--purpur-color-border-weak);
+  }
+
+  .utskrift__adresse {
+    margin: 0 0 var(--purpur-spacing-50);
+    font-size: var(--purpur-typography-scale-150);
+    font-weight: var(--purpur-typography-weight-bold);
+    line-height: var(--purpur-typography-line-height-tight);
+  }
+
+  .utskrift__kommentarer {
+    margin: var(--purpur-spacing-50) 0 0;
+    padding-left: var(--purpur-spacing-250);
+  }
+
+  .utskrift__kommentarer li {
+    orphans: 2;
+    widows: 2;
+  }
+}
