@@ -7,8 +7,9 @@ estimert kjøretid fra kontoret.
 
 Hver leveranse har sin egen markørfarge, flere infobobler kan stå åpne samtidig
 og trekkes og strekkes dit de skal stå, dagen kan lagres som fil og åpnes igjen
-rett før møtet, og fremvisningsmodus rydder bort alt annet enn kartet og
-leveransene når briefingen holdes.
+rett før møtet, fremvisningsmodus rydder bort alt annet enn kartet og
+leveransene når briefingen holdes, og hele dagen kan skrives ut eller lagres
+som PDF.
 
 Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
@@ -106,6 +107,19 @@ sammen når flere dager ligger på kartet samtidig.
    fila to ganger, får du dagen to ganger – med hver sin markørfarge.
 5. Filer som ikke er lagret fra Briefingkart avvises med en forklaring i stedet
    for å legge igjen en halv leveranse på kartet.
+
+**Skriv ut dagen, eller lagre den som PDF**
+
+1. «Skriv ut» over leveransekortene åpner nettleserens utskriftsdialog. Der
+   ligger «Lagre som PDF» også, så dagen kan tas med som fil eller på papir.
+2. Utskriften er sitt eget ark, ikke et bilde av skjermen: én leveranse per
+   side, med dato, ansvarlige, toppinfo og notat øverst, en oppsummering av
+   adresser, kunder og utstyr, og deretter hver adresse med antall kunder,
+   utstyr, kjøretid fra kontoret og kommentarene sine med leilighetsnummer.
+3. Papiret blir det samme uansett hvilke bobler som står åpne på kartet, og en
+   adresse deles aldri over to sider.
+4. Kartet blir ikke med. Kartflisene gjengis ikke pålitelig i utskrift, så arket
+   er tekst – det er kommentarene og kjøretidene crewet trenger i bilen.
 
 **Fremvisningsmodus**
 
@@ -224,6 +238,7 @@ npm run lint     # oxlint
 | `src/components/Dagslagring.tsx`   | Nedlasting og åpning av dagen som `.json`-fil        |
 | `src/components/Kjoretidsbadge.tsx`| Kjøretiden som Purpur-badge, lik i lista og i boblen |
 | `src/components/Toppinfo.tsx`      | Toppinfoen fra dagsarket, lik i lista og i boblen     |
+| `src/components/Utskrift.tsx`      | Dagen på papir: ett ark per leveranse, kun i `@media print` |
 | `src/lib/xlsx.ts`                  | Minimal .xlsx-leser som også henter cellefarger      |
 | `src/lib/leveranse.ts`             | Tolker leveranselista til én leveranse per dagsark   |
 | `src/lib/kontor.ts`                | Kontoret på Økern Portal                             |
@@ -264,6 +279,9 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
 - Ark som heter «Underlag» eller «Informasjon» hoppes over, og kommer derfor
   heller ikke opp som valg i importdialogen. Et dagsark må ha en overskriftsrad
   med «Subscriber name», «Street name» og «House number».
+- Utskriften tar ikke med kartet: Leaflet-flisene gjengis ikke pålitelig i
+  utskrift, så arket er tekst. Boblenes plassering og størrelse er heller ikke
+  en del av papiret.
 - Ved tvetydig adresse brukes Kartverkets beste treff. Hele den bekreftede
   adressen vises, slik at feiltreff er synlige.
 
