@@ -24,6 +24,8 @@ type Props = {
   onVisBobler: (id: string) => void;
   onLukkBobler: () => void;
   onVisAlle: () => void;
+  /** Åpner leveransen for retting: crew, notat, adresser og antall kunder. */
+  onRediger: (id: string) => void;
   onFjern: (id: string) => void;
   onFjernAlle: () => void;
 };
@@ -37,6 +39,7 @@ export function LeveranseListe({
   onVisBobler,
   onLukkBobler,
   onVisAlle,
+  onRediger,
   onFjern,
   onFjernAlle,
 }: Props) {
@@ -170,9 +173,14 @@ export function LeveranseListe({
                       Vis boblene
                     </Button>
                     {!fremvisning && (
-                      <Button variant="text" onClick={() => onFjern(leveranse.id)}>
-                        Fjern
-                      </Button>
+                      <>
+                        <Button variant="text" onClick={() => onRediger(leveranse.id)}>
+                          Rediger
+                        </Button>
+                        <Button variant="text" onClick={() => onFjern(leveranse.id)}>
+                          Fjern
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

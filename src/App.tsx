@@ -6,6 +6,7 @@ import { Dagslagring } from "./components/Dagslagring";
 import { ExcelOpplasting } from "./components/ExcelOpplasting";
 import { LeveranseDialog, type VentendeImport } from "./components/LeveranseDialog";
 import { LeveranseListe } from "./components/LeveranseListe";
+import { LeveranseRedigering } from "./components/LeveranseRedigering";
 import { LeveranseSkjema, type SkjemaUtkast } from "./components/LeveranseSkjema";
 import { DagsfilFeil, lesDagsfil } from "./lib/dagsfil";
 import { fordelFarger } from "./lib/farger";
@@ -53,9 +54,14 @@ export function App() {
     teller: 0,
   });
 
-  // Leveransene fra en importert fil venter her mens dialogen spør hvem som
-  // skal ut på dem. Adressene slås ikke opp før det er avklart.
+  // Leveransene fra en importert fil venter her mens dialogen spør hvilke ark
+  // som skal med og hvem som skal ut på dem. Adressene slås ikke opp før det
+  // er avklart.
   const [ventende, setVentende] = useState<VentendeImport | null>(null);
+
+  // Leveransen som redigeres, som id: da følger modalen med når leveransen
+  // endres, i stedet for å holde på en utdatert kopi.
+  const [redigererId, setRedigererId] = useState<string | null>(null);
 
   const [lasterSkjema, setLasterSkjema] = useState(false);
   const [skjemaFeil, setSkjemaFeil] = useState<string | null>(null);
@@ -156,7 +162,7 @@ export function App() {
   };
 
   /** Henter kjøretid for alle nye stopp i én forespørsel. */
-  const beregnKjoretider = async (nye: UfargetLeveranse[]) => {
+  const beregnKjoretider = async (nye: { stopp: Stopp[] }[]) => {
     const stopp = nye.flatMap((leveranse) => leveranse.stopp);
     // hentKjoretider faller tilbake på luftlinje-anslag om ruting feiler, og
     // kaster bare hvis oppslaget avbrytes – det gjør vi ikke her.
@@ -233,18 +239,16 @@ export function App() {
     }
   };
 
-  /** Crewet er satt i dialogen: nå slås adressene opp og leveransene legges ut. */
-  const bekreftVentende = async (ansvarlige: string[][]) => {
+  /**
+   * Arkene er valgt og crewet satt i dialogen: nå slås adressene opp og
+   * leveransene legges ut. Ark som ikke ble huket av er allerede luket bort.
+   */
+  const bekreftVentende = async (valgte: LeveranseUtkast[]) => {
     if (!ventende) return;
     setLasterFil(true);
 
     try {
-      const { nye, feilet } = await leggTil(
-        ventende.leveranser.map((leveranse, indeks) => ({
-          ...leveranse,
-          ansvarlige: ansvarlige[indeks] ?? leveranse.ansvarlige,
-        })),
-      );
+      const { nye, feilet } = await leggTil(valgte);
 
       const adresser = nye.reduce((sum, leveranse) => sum + leveranse.stopp.length, 0);
       const kunder = nye.reduce(
@@ -302,17 +306,71 @@ export function App() {
     }
   };
 
+  /**
+   * Lagrer en redigert leveranse. Adressene som er lagt til må slås opp først;
+   * de som ikke blir funnet gis tilbake, slik at modalen kan si fra om dem i
+   * stedet for å la dem forsvinne.
+   */
+  const lagreRedigering = async (endret: Leveranse, nyeAdresser: string[]): Promise<string[]> => {
+    const treff = nyeAdresser.length > 0 ? await sokAdresser(nyeAdresser) : [];
+
+    const nyeStopp: Stopp[] = [];
+    const feilet: string[] = [];
+    for (const resultat of treff) {
+      if (!resultat.adresse) {
+        feilet.push(resultat.soketekst);
+        continue;
+      }
+      nyeStopp.push({
+        id: crypto.randomUUID(),
+        soketekst: resultat.soketekst,
+        adresse: resultat.adresse,
+        antallKunder: null,
+        utstyr: null,
+        kommentarer: [],
+        kjoretid: null,
+      });
+    }
+
+    const oppdatert: Leveranse = { ...endret, stopp: [...endret.stopp, ...nyeStopp] };
+    setLeveranser((forrige) =>
+      forrige.map((leveranse) => (leveranse.id === oppdatert.id ? oppdatert : leveranse)),
+    );
+
+    // Sto briefingen åpen på en adresse som nå er fjernet, er det ingenting
+    // igjen å vise.
+    const gammel = leveranser.find((leveranse) => leveranse.id === endret.id);
+    setAktivtStoppId((forrige) =>
+      forrige !== null &&
+      gammel?.stopp.some((stopp) => stopp.id === forrige) &&
+      !oppdatert.stopp.some((stopp) => stopp.id === forrige)
+        ? null
+        : forrige,
+    );
+
+    // Nye adresser har ingen kjøretid ennå. Den hentes i bakgrunnen, som ved
+    // en vanlig import.
+    if (nyeStopp.length > 0) {
+      rammInn(null);
+      void beregnKjoretider([{ stopp: nyeStopp }]);
+    }
+
+    return feilet;
+  };
+
   const fjernLeveranse = (id: string) => {
     const fjernet = leveranser.find((leveranse) => leveranse.id === id);
     setLeveranser((forrige) => forrige.filter((leveranse) => leveranse.id !== id));
     setAktivtStoppId((forrige) =>
       fjernet?.stopp.some((stopp) => stopp.id === forrige) ? null : forrige,
     );
+    if (redigererId === id) setRedigererId(null);
   };
 
   const fjernAlle = () => {
     setLeveranser([]);
     setAktivtStoppId(null);
+    setRedigererId(null);
   };
 
   return (
@@ -368,6 +426,7 @@ export function App() {
             onVisBobler={visBobler}
             onLukkBobler={lukkBobler}
             onVisAlle={() => rammInn(null)}
+            onRediger={setRedigererId}
             onFjern={fjernLeveranse}
             onFjernAlle={fjernAlle}
           />
@@ -404,6 +463,12 @@ export function App() {
         laster={lasterFil}
         onBekreft={bekreftVentende}
         onAvbryt={() => setVentende(null)}
+      />
+
+      <LeveranseRedigering
+        leveranse={leveranser.find((leveranse) => leveranse.id === redigererId) ?? null}
+        onLagre={lagreRedigering}
+        onLukk={() => setRedigererId(null)}
       />
     </div>
   );

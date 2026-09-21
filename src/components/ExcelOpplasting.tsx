@@ -31,8 +31,8 @@ export function ExcelOpplasting({ onFil, laster, resultat, feilmelding, onLukkMe
           <div className="stabel">
             <Paragraph variant="paragraph-100">
               Last opp GDA-uttrekket (.xlsx). Hvert dagsark blir én leveranse med alle adressene
-              sine, antall kunder telles automatisk, og du får spørsmål om hvem som skal ut på hver
-              av dem.
+              sine, og antall kunder telles automatisk. Du velger selv hvilke av arkene som skal
+              importeres, og skriver hvem som skal ut på hver av dem.
             </Paragraph>
 
             <div>
