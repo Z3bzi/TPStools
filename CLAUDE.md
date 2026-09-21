@@ -27,6 +27,21 @@ testfiler. CI (`.github/workflows/deploy.yml`) kjører `npm ci`, `npm run lint`
 og `npm run build` ved push til `main`, og deployer `dist/` til GitHub Pages.
 Portene før en push er altså lint + build; verifiser endringer i `npm run dev`.
 
+### TypeScript-flaggene som stopper builden
+
+`npm run lint` er en tynn port: `.oxlintrc.json` slår bare på
+`react/rules-of-hooks` og `react/only-export-components`. Typefeil kommer først
+i `npm run typecheck` eller `npm run build`, som begge kjører `tsc -b`.
+
+`tsconfig.app.json` kjører uten `strict` – null-håndteringen i `types.ts`
+(`utstyr: Utstyr | null`, `kjoretid: Kjoretid | null`) er konvensjon, ikke noe
+kompilatoren håndhever. Til gjengjeld står fire flagg som velter builden der
+linten sier alt er bra:
+
+- `verbatimModuleSyntax` – typer må importeres med `import type`.
+- `erasableSyntaxOnly` – ingen `enum`, `namespace` eller parameter-properties.
+- `noUnusedLocals` / `noUnusedParameters` – en ubrukt variabel er en byggefeil.
+
 ## Arkitektur
 
 Ren klient-app: React 19 + Vite, ingen backend, ingen database, ingen
@@ -55,6 +70,13 @@ dagsfila. `LeveranseRedigering` går andre veien: den bygger et
 `Leveranse`-objekt tilbake fra tekstfelt, og adressene som legges til der er
 det eneste som geokodes etter import. En **leveranse** er én dag crewet er ute (ett dagsark), et **stopp**
 er én adresse/oppgang i den dagen.
+
+Komponentene tar imot props og callbacks – ingen context, ingen store, ingen
+imperative API-er. `App.leggTil` geokoder først, og adresser Kartverket ikke
+fant kommer tilbake som `feilet` så UI-et kan si fra; en leveranse der ingen
+adresse lot seg slå opp legges ikke på kartet i det hele tatt. Kjøretidene
+hentes etterpå av `beregnKjoretider` og flettes inn per stopp-id, så markørene,
+lista og utskriften står ferdig før tallene kommer.
 
 ### App.tsx styrer kartet med tellere, ikke med kall
 
@@ -119,6 +141,12 @@ eller radiusverdier. `--purpur-rescale: 1` settes i `index.css` og **må stå
 der**: pakkens tokens er `calc(<verdi> * var(--purpur-rescale))`, og uten
 faktoren blir alle avstander og skriftstørrelser ugyldige.
 
+All egen CSS ligger i én global `src/index.css` – ingen CSS-moduler, ingen
+styling-bibliotek. Klassenavnene er norske og BEM-aktige (`app__panel`,
+`app--fremvisning`, `utskrift__stopp`, `boble-kant--nordost`).
+`@purpurds/purpur/styles` og `leaflet/dist/leaflet.css` importeres i
+`main.tsx`, før `index.css`.
+
 Markørene tegnes som SVG i `L.divIcon` i stedet for Leaflets bilde, siden
 bildet ikke kan farges per leveranse.
 
@@ -155,11 +183,17 @@ bildet ikke kan farges per leveranse.
   import, skjema, lagring og fjern-knapper. Nye kontroller som kan endre noe
   må også skjules der. «Skriv ut» står igjen, siden den bare åpner
   utskriftsdialogen.
+- **`base: "./"` i `vite.config.ts` må stå.** Relativ base er det som gjør at
+  samme build virker både på `https://<bruker>.github.io/TPStools/` og på et
+  eget domene. En absolutt base gir blanke sider på Pages uten at noe feiler
+  lokalt.
 - Ingenting sendes noe sted, men en nedlastet dagsfil inneholder kundedata
   (adresser, leilighetsnumre, kommentarer).
 
 ## Kjent bakgrunn
 
-`README.md` beskriver funksjonaliteten sett fra crewet, begrunnelsene bak den
-egne xlsx-leseren og kjøretidsanslaget, samt kjente begrensninger og planlagt
-videre arbeid. Les den før større endringer i import eller kartoppførsel.
+`README.md` har en fil-for-fil-tabell under «Struktur» – den vedlikeholdes der,
+ikke her. Den beskriver også funksjonaliteten sett fra crewet, begrunnelsene
+bak den egne xlsx-leseren og kjøretidsanslaget, samt kjente begrensninger og
+planlagt videre arbeid. Les den før større endringer i import eller
+kartoppførsel.
