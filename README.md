@@ -15,10 +15,11 @@ Alt kjører i nettleseren. Ingen backend, ingen database, ingen API-nøkler.
 
 ## Slik virker det
 
-Kontoret på Økern Portal ligger alltid på kartet som en lilla boble, så det er
-lett å se leveransene i forhold til det. Når noe legges til, rammes kartet inn
-slik at både kontoret og alle adressene er synlige, og hver adresse får estimert
-kjøretid fra kontoret i lista og i boblen. «Vis leveransen» rammer inn adressene
+Telia-kontorene på Økern (Oslo), i Bergen, Trondheim og Kristiansand ligger
+alltid på kartet som lilla bobler, så det er lett å se leveransene i forhold til
+dem. Når noe legges til, rammes kartet inn slik at alle adressene og kontorene
+de hører til er synlige, og hver adresse får estimert kjøretid fra nærmeste
+kontor i lista og i boblen – med navnet på kontoret, f.eks. «fra Bergen». «Vis leveransen» rammer inn adressene
 til én enkelt dag.
 
 Hver leveranse får sin egen markørfarge: alle adressene fra ett dagsark står i
@@ -182,17 +183,20 @@ Node-avhengigheter som ikke hører hjemme i en ren klient-app. `src/lib/xlsx.ts`
 pakker derfor ut arbeidsboka med `fflate` og leser `styles.xml` direkte – rundt
 150 linjer, og full kontroll på fargene.
 
-### Kjøretid fra kontoret
+### Kjøretid fra nærmeste kontor
 
 Kjøretiden hentes fra OSRMs åpne demo-API, som ruter på ekte veinett uten
 API-nøkkel og kalles direkte fra nettleseren – samme prinsipp som
-Kartverket-oppslaget. Appen bruker *tabell*-tjenesten med kontoret som eneste
-kilde, så en importert leveranseliste på 60 adresser blir tre forespørsler i
+Kartverket-oppslaget. Hver adresse knyttes først til kontoret som ligger
+nærmest i luftlinje, og appen bruker *tabell*-tjenesten med det kontoret som
+eneste kilde, så en importert leveranseliste på 60 adresser blir tre forespørsler i
 stedet for seksti. Rutingen skjer i bakgrunnen: markørene legges ut med én gang,
 og tallet fylles inn i kortene og boblene når svaret kommer.
 
-Utgangspunktet er kontorets faste koordinat i `src/lib/kontor.ts` – samme punkt
-som markøren står på.
+Utgangspunktet er kontorenes faste koordinater i `src/lib/kontor.ts` – samme
+punkt som markørene står på. Nærmeste kontor velges i luftlinje, ikke etter
+kjøretid, så et sted omtrent midt mellom to kontorer kan få det som i praksis
+er nest nærmest.
 
 Svarer ikke tjenesten, regner appen et grovt anslag fra luftlinje ganget med en
 omveisfaktor, med lavere snittfart på korte turer enn på lange. Anslaget er
@@ -241,7 +245,7 @@ npm run lint     # oxlint
 | `src/components/Utskrift.tsx`      | Dagen på papir: ett ark per leveranse, kun i `@media print` |
 | `src/lib/xlsx.ts`                  | Minimal .xlsx-leser som også henter cellefarger      |
 | `src/lib/leveranse.ts`             | Tolker leveranselista til én leveranse per dagsark   |
-| `src/lib/kontor.ts`                | Kontoret på Økern Portal                             |
+| `src/lib/kontor.ts`                | Kontorene kjøretid regnes fra, og nærmeste kontor    |
 | `src/lib/dagsfil.ts`               | Dagen lagret som JSON, med validering ved åpning     |
 | `src/lib/farger.ts`                | Markørfargene leveransene skilles på                 |
 | `src/lib/navn.ts`                  | Navnelister skrevet med komma                        |
@@ -263,7 +267,8 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
 - Kontorets posisjon er en fast koordinat i `src/lib/kontor.ts`, målt opp på
   bygget. Økern Portal dekker flere adresser, så et adresseoppslag lander ikke
   nødvendigvis på inngangen crewet kjører fra. Flyttes kontoret, endres
-  koordinaten der.
+  koordinaten der. Koordinatene for Bergen, Trondheim og Kristiansand er satt
+  ut fra gateadressen og ikke målt opp på bygget.
 - Samme adresse på to dagsark gir to markører oppå hverandre – én per
   leveranse. De har hver sin farge og datoen står i boblen, men markørene ligger
   fortsatt på samme punkt, så den øverste skjuler den andre. Boblene kan

@@ -27,7 +27,7 @@ export type Kommentar = {
   tekst: string;
 };
 
-/** Estimert kjøring fra kontoret til et stopp. */
+/** Estimert kjøring fra nærmeste kontor til et stopp. */
 export type Kjoretid = {
   /** Kjøretid i sekunder. */
   sekunder: number;
@@ -35,6 +35,8 @@ export type Kjoretid = {
   meter: number | null;
   /** `vei` = rutet på ekte veinett, `luftlinje` = grovt anslag når ruting feiler. */
   kilde: "vei" | "luftlinje";
+  /** Stedsnavnet på kontoret kjøretiden er regnet fra, f.eks. "Bergen". */
+  fra: string;
 };
 
 /** Ett stopp i en leveranse: én oppgang, med kundene som bor der. */
@@ -47,7 +49,7 @@ export type Stopp = {
   antallKunder: number | null;
   utstyr: Utstyr | null;
   kommentarer: Kommentar[];
-  /** Kjøretid fra kontoret. `null` mens ruting pågår. */
+  /** Kjøretid fra nærmeste kontor. `null` mens ruting pågår. */
   kjoretid: Kjoretid | null;
 };
 
