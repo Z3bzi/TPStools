@@ -169,8 +169,10 @@ bildet ikke kan farges per leveranse.
   én per adresse), og faller tilbake på et luftlinje-anslag merket
   `kilde: "luftlinje"` – som UI-et viser nøytralt, ikke som en rutet tid.
   `hentKjoretider` kaster kun ved abort.
-- **Kontorets posisjon er en fast koordinat** i `lib/kontor.ts`, ikke et
-  adresseoppslag. Skal kontoret flyttes, endres konstanten.
+- **Kontorenes posisjoner er faste koordinater** i `lib/kontor.ts`
+  (`KONTORER`), ikke adresseoppslag. Hvert stopp rutes fra
+  `naermesteKontor()` (luftlinje), og `Kjoretid.fra` bærer stedsnavnet videre
+  til UI, utskrift og dagsfil. Eldre dagsfiler uten `fra` leses som Økern.
 - **Navnene fra arket fylles aldri inn.** Importdialogen starter med tomt
   navnefelt og viser arkets navn som hint: det er navnene noen har skrevet selv
   som blir med videre. `LeveranseUtkast.ansvarlige` overskrives derfor av

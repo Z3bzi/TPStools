@@ -66,7 +66,7 @@ export function Utskrift({ leveranser }: { leveranser: Leveranse[] }) {
                       {stopp.antallKunder === null
                         ? "Antall kunder ikke satt"
                         : `${stopp.antallKunder} kunder`}{" "}
-                      · Kjøretid fra kontoret: {kjoretidstekst(stopp.kjoretid)}
+                      · Kjøretid: {kjoretidstekst(stopp.kjoretid)}
                     </p>
 
                     {stoppUtstyr.length > 0 && (
@@ -108,6 +108,7 @@ function kjoretidstekst(kjoretid: Kjoretid | null): string {
 
   const deler = [`ca. ${formaterVarighet(kjoretid.sekunder)}`];
   if (kjoretid.meter !== null) deler.push(formaterAvstand(kjoretid.meter));
+  deler.push(`fra ${kjoretid.fra}`);
   if (kjoretid.kilde === "luftlinje") deler.push("anslag i luftlinje");
 
   return deler.join(", ");

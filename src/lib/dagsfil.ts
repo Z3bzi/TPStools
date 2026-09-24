@@ -1,4 +1,5 @@
 import { erFarge, fordelFarger } from "./farger";
+import { KONTOR } from "./kontor";
 import {
   TOMT_UTSTYR,
   type AdresseTreff,
@@ -198,6 +199,8 @@ function lesKjoretid(verdi: unknown): Kjoretid | null {
     // Ukjent kilde regnes som anslag, så et tall aldri ser mer presist ut enn
     // det er.
     kilde: rad.kilde === "vei" ? "vei" : "luftlinje",
+    // Filer lagret før det fantes flere kontorer er regnet fra Økern.
+    fra: typeof rad.fra === "string" && rad.fra !== "" ? rad.fra : KONTOR.sted,
   };
 }
 

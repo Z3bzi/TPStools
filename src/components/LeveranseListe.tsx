@@ -135,7 +135,7 @@ export function LeveranseListe({
                   )}
 
                   <Paragraph variant="additional-100-bold">
-                    Adresser og kjøretid fra kontoret
+                    Adresser og kjøretid fra nærmeste kontor
                   </Paragraph>
                   <ul className="stoppliste">
                     {leveranse.stopp.map((s) => (

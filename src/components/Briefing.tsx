@@ -48,7 +48,7 @@ export function Briefing({ leveranse, stopp }: { leveranse: Leveranse; stopp: St
         </Felt>
 
         <div>
-          <Paragraph variant="additional-100-bold">Kjøretid fra kontoret</Paragraph>
+          <Paragraph variant="additional-100-bold">Kjøretid fra nærmeste kontor</Paragraph>
           <div className="rad">
             <Kjoretidsbadge kjoretid={stopp.kjoretid} />
           </div>

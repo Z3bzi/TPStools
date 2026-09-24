@@ -6,7 +6,7 @@ import { Paragraph } from "@purpurds/purpur";
 
 import { Briefing } from "./Briefing";
 import { erFarge, LEVERANSEFARGER } from "../lib/farger";
-import { KONTOR } from "../lib/kontor";
+import { KONTOR, KONTORER, naermesteKontor } from "../lib/kontor";
 import type { Leveranse } from "../types";
 
 /**
@@ -98,7 +98,7 @@ export type Boblekommando = {
 
 /** Hvilke punkter kartet skal ramme inn, og når det skal gjøres på nytt. */
 export type Innramming = {
-  /** Leveransen som skal rammes inn. Null = kontoret og alle leveranser. */
+  /** Leveransen som skal rammes inn. Null = kontorene i bruk og alle leveranser. */
   leveranseId: string | null;
   /** Økes hver gang noen ber om innramming, også for samme leveranse. */
   teller: number;
@@ -144,6 +144,17 @@ export function Briefingkart({
     leveranse.stopp.map((stopp): [number, number] => [stopp.adresse.lat, stopp.adresse.lon]),
   );
 
+  // Bare kontorene adressene faktisk hører til rammes inn – ellers ville en
+  // dag i Oslo alltid blitt zoomet ut til hele Sør-Norge. Uten adresser er
+  // det hovedkontoret.
+  const kontorerIBruk = new Set(
+    innrammet.flatMap((leveranse) => leveranse.stopp.map((stopp) => naermesteKontor(stopp.adresse))),
+  );
+  if (kontorerIBruk.size === 0) kontorerIBruk.add(KONTOR);
+  const kontorpunkter = [...kontorerIBruk].map(
+    ({ posisjon }): [number, number] => [posisjon.lat, posisjon.lon],
+  );
+
   useEffect(() => {
     if (!aktivtStoppId) return;
     // Popup-en åpnes etter at markøren er montert, slik at briefingen vises
@@ -178,20 +189,27 @@ export function Briefingkart({
       <KartKamera
         fokus={aktivt ? [aktivt.stopp.adresse.lat, aktivt.stopp.adresse.lon] : null}
         fokusTeller={fokusTeller}
-        // Kontoret rammes inn sammen med alt, men ikke når én leveranse vises
+        // Kontorene rammes inn sammen med alt, men ikke når én leveranse vises
         // for seg – da er det adressene crewet skal se.
-        punkter={innramming.leveranseId === null ? [[kontor.lat, kontor.lon], ...punkter] : punkter}
+        punkter={innramming.leveranseId === null ? [...kontorpunkter, ...punkter] : punkter}
         innrammingTeller={innramming.teller}
       />
 
-      <Marker position={[kontor.lat, kontor.lon]} icon={kontorIkon} zIndexOffset={-100}>
-        <Popup>
-          <div className="stabel">
-            <Paragraph variant="paragraph-100-bold">{KONTOR.navn}</Paragraph>
-            <Paragraph variant="paragraph-100">{KONTOR.adresse}</Paragraph>
-          </div>
-        </Popup>
-      </Marker>
+      {KONTORER.map(({ navn, adresse, posisjon }) => (
+        <Marker
+          key={navn}
+          position={[posisjon.lat, posisjon.lon]}
+          icon={kontorIkon}
+          zIndexOffset={-100}
+        >
+          <Popup>
+            <div className="stabel">
+              <Paragraph variant="paragraph-100-bold">{navn}</Paragraph>
+              <Paragraph variant="paragraph-100">{adresse}</Paragraph>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
 
       {leveranser.flatMap((leveranse) =>
         leveranse.stopp.map((stopp) => (
