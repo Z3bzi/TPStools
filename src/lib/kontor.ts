@@ -38,8 +38,8 @@ export const KONTORER: Kontor[] = [
   {
     navn: "Telia – Bergen",
     sted: "Bergen",
-    adresse: "Fjøsangerveien 50, 5059 Bergen",
-    posisjon: { lat: 60.36205, lon: 5.34392 },
+    adresse: "Fabrikkgaten 6, 5059 Bergen",
+    posisjon: { lat: 60.37270, lon: 5.34620 },
   },
   {
     navn: "Telia – Trondheim",
