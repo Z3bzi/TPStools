@@ -283,7 +283,8 @@ både på `https://<bruker>.github.io/TPStools/` og på et eget domene.
   Briefingkart avvises framfor å bli lest halvveis.
 - Ark som heter «Underlag» eller «Informasjon» hoppes over, og kommer derfor
   heller ikke opp som valg i importdialogen. Et dagsark må ha en overskriftsrad
-  med «Subscriber name», «Street name» og «House number».
+  med «Street name» og «House number» (GDA-uttrekket) eller «Adresse» og «Nr»
+  (arbeidslista, der «Post nummer» også tas med i adressesøket).
 - Utskriften tar ikke med kartet: Leaflet-flisene gjengis ikke pålitelig i
   utskrift, så arket er tekst. Boblenes plassering og størrelse er heller ikke
   en del av papiret.
