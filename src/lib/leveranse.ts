@@ -28,7 +28,7 @@ export function lesLeveranser(data: Uint8Array): LeveranseUtkast[] {
 
   if (utkast.length === 0) {
     throw new XlsxFeil(
-      'Fant ingen leveranserader. Arket må ha en overskriftsrad med "Subscriber name", "Street name" og "House number".',
+      'Fant ingen leveranserader. Arket må ha en overskriftsrad med "Street name" og "House number" (eller "Adresse" og "Nr").',
     );
   }
 
@@ -57,13 +57,36 @@ function velgDagsark(ark: Ark[]): Ark[] {
 
 function overskrifterFor(ark: Ark): string[] {
   const rad = finnOverskriftsrad(ark);
-  return rad === -1 ? [] : ark.rader[rad].map((c) => c.verdi.trim().toLowerCase());
+  return rad === -1 ? [] : ark.rader[rad].map((c) => normaliser(c.verdi));
 }
 
+/** Overskrifter brytes gjerne over to linjer i cellen («Hus\nbokstav»). */
+function normaliser(overskrift: string): string {
+  return overskrift.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Listene finnes i to utgaver: GDA-uttrekket med engelske overskrifter og
+ * arbeidslista med norske. Første navn som finnes i arket brukes.
+ */
+const KOLONNER = {
+  navn: ["subscriber name", "navn"],
+  gate: ["street name", "adresse"],
+  nummer: ["house number", "nr"],
+  bokstav: ["house number alphanumeric", "hus bokstav"],
+  leilighet: ["apartament number", "apartment number", "h-nr"],
+  postnummer: ["post nummer", "postnummer"],
+  kommentar1: ["kommentar 1", "kommentar tps"],
+  kommentar2: ["kommentar 2", "kommentar tps 2"],
+};
+
 function finnOverskriftsrad(ark: Ark): number {
-  return ark.rader.findIndex((rad) =>
-    rad.some((celle) => celle.verdi.trim().toLowerCase() === "subscriber name"),
-  );
+  return ark.rader.findIndex((rad) => {
+    const overskrifter = rad.map((c) => normaliser(c.verdi));
+    return [KOLONNER.gate, KOLONNER.nummer].every((navn) =>
+      navn.some((n) => overskrifter.includes(n)),
+    );
+  });
 }
 
 /** Overskrifter som hører til selve lista. Resten er navn på ansvarlige. */
@@ -83,29 +106,40 @@ const KJENTE_OVERSKRIFTER = new Set(
     "kommentar 2",
     "mobile priceplans",
     "age",
-  ].map((o) => o.toLowerCase()),
+    "kundenr",
+    "kommentar tps",
+    "kommentar tps 2",
+    "ih 1",
+    "ih 2",
+    "mobil",
+    ...Object.values(KOLONNER).flat(),
+  ],
 );
 
 function lesDagsark(ark: Ark, info: Map<string, string>): LeveranseUtkast | null {
   const overskriftsrad = finnOverskriftsrad(ark);
   if (overskriftsrad === -1) return null;
 
-  const overskrifter = ark.rader[overskriftsrad].map((c) => c.verdi.trim());
-  const kolonne = (navn: string) =>
-    overskrifter.findIndex((o) => o.toLowerCase() === navn.toLowerCase());
+  const overskrifter = ark.rader[overskriftsrad].map((c) => c.verdi.replace(/\s+/g, " ").trim());
+  const normalisert = overskrifter.map(normaliser);
+  const kolonne = (navn: string[]) => {
+    const treff = navn.find((n) => normalisert.includes(n));
+    return treff === undefined ? -1 : normalisert.indexOf(treff);
+  };
 
-  const kNavn = kolonne("Subscriber name");
-  const kGate = kolonne("Street name");
-  const kNummer = kolonne("House number");
-  const kBokstav = kolonne("House number alphanumeric");
-  const kLeilighet = kolonne("Apartament number");
-  const kKommentar1 = kolonne("Kommentar 1");
-  const kKommentar2 = kolonne("Kommentar 2");
+  const kNavn = kolonne(KOLONNER.navn);
+  const kGate = kolonne(KOLONNER.gate);
+  const kNummer = kolonne(KOLONNER.nummer);
+  const kBokstav = kolonne(KOLONNER.bokstav);
+  const kLeilighet = kolonne(KOLONNER.leilighet);
+  const kPostnummer = kolonne(KOLONNER.postnummer);
+  const kKommentar1 = kolonne(KOLONNER.kommentar1);
+  const kKommentar2 = kolonne(KOLONNER.kommentar2);
   if (kGate === -1 || kNummer === -1) return null;
 
   // Navnene på crewet står som egne kolonneoverskrifter etter "Ut".
   const ansvarlige = overskrifter.filter(
-    (o) => o !== "" && !KJENTE_OVERSKRIFTER.has(o.toLowerCase()),
+    (o) => o !== "" && !KJENTE_OVERSKRIFTER.has(normaliser(o)),
   );
 
   const perAdresse = new Map<string, StoppUtkast>();
@@ -117,11 +151,13 @@ function lesDagsark(ark: Ark, info: Map<string, string>): LeveranseUtkast | null
 
     const bokstav = kBokstav === -1 ? "" : tekst(rad[kBokstav]);
     const adresse = `${gate} ${nummer}${bokstav && bokstav !== "-" ? bokstav : ""}`;
+    // Postnummer lagret som tall har mistet nullene foran (0182 -> 182).
+    const postnummer = kPostnummer === -1 ? "" : tekst(rad[kPostnummer]).replace(/^\d{1,3}$/, (p) => p.padStart(4, "0"));
 
     let stopp = perAdresse.get(adresse);
     if (!stopp) {
       stopp = {
-        soketekst: [adresse, info.get("sted")].filter(Boolean).join(", "),
+        soketekst: [adresse, postnummer || info.get("sted")].filter(Boolean).join(", "),
         antallKunder: 0,
         utstyr: { ...TOMT_UTSTYR },
         kommentarer: [],
